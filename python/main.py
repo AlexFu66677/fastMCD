@@ -4,8 +4,8 @@ import MCDWrapper
 import os
 
 np.set_printoptions(precision=2, suppress=True)
-cap = cv2.VideoCapture('/home/fjl/code/moving/fuseover/python/data/car0.mp4')
-folder_path_res="/home/fjl/code/moving/fusebbox/python/data/car0/bbox_11"
+cap = cv2.VideoCapture('/home/fjl/code/moving/fusebbox/python/data/car0.mp4')
+folder_path_res="/home/fjl/code/moving/fusebbox/python/data/car0/bbox_12"
 folder_path_mask="/home/fjl/code/moving/fusebbox/python/data/car4/fd_mask_16"
 size = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
         int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))

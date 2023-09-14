@@ -8,7 +8,7 @@ class ProbModel:
         self.NUM_MODELS = 2
         self.BLOCK_SIZE = 2
         self.VAR_THRESH_MODEL_MATCH = 2
-        self.MAX_BG_AGE = 30
+        self.MAX_BG_AGE = 20
         self.VAR_THRESH_FG_DETERMINE = 4.0
         self.INIT_BG_VAR = 20.0 * 20.0
         self.MIN_BG_VAR = 5 * 5
@@ -18,6 +18,15 @@ class ProbModel:
         self.temp_means = None
         self.temp_vars = None
         self.temp_ages = None
+
+        self.alex_means = None
+        self.alex_vars = None
+        self.alex_ages = None
+        self.alex_temp_means = None
+        self.alex_temp_vars = None
+        self.alex_temp_ages = None
+        self.alex = False
+
         self.modelIndexes = None
         self.modelWidth = None
         self.modelHeight = None
@@ -40,6 +49,15 @@ class ProbModel:
         self.motionCompensate(H)
         self.update(gray)
 
+    def alexinit(self, gray):
+
+        self.alex_means = np.zeros((self.NUM_MODELS, self.modelHeight, self.modelWidth))
+        self.alex_vars = np.zeros((self.NUM_MODELS, self.modelHeight, self.modelWidth))
+        self.alex_ages = np.zeros((self.NUM_MODELS, self.modelHeight, self.modelWidth))
+        self.alex_temp_means = np.zeros((self.NUM_MODELS, self.modelHeight, self.modelWidth))
+        self.alex_temp_ages = np.zeros((self.NUM_MODELS, self.modelHeight, self.modelWidth))
+        self.alex_temp_vars = np.zeros((self.NUM_MODELS, self.modelHeight, self.modelWidth))
+        self.alex=True
     def rebin(self, arr, factor):
         f = (np.asarray(factor) - arr.shape) % factor
         temp = np.pad(arr, ((0, f[0]), (0, f[1])), 'edge')
@@ -47,6 +65,13 @@ class ProbModel:
         res = temp.reshape(sh).mean(-1).mean(1)
         res = res[:res.shape[0] - f[0], : res.shape[1] - f[1]]
         return res
+
+    """
+    这是一个重新采样数组的函数，它接受一个数组arr和一个元组factor，用于指定每个维度的重采样因子。
+    该函数首先使用边缘值填充数组，以确保其维度可被重采样因子整除。然后将填充的数组重塑为一个新形状，
+    其中每个像素块的大小都是重采样因子。函数然后沿两个维度取每个块的平均值，以获得重采样后的数组。
+    最后，函数删除任何填充像素，以返回具有所需维度的数组。
+    """
 
     def rebinMax(self, arr, factor):
         f = (np.asarray(factor) - arr.shape) % factor
@@ -56,7 +81,13 @@ class ProbModel:
         res = res[:res.shape[0] - f[0], : res.shape[1] - f[1]]
         return res
 
-    def motionCompensate(self, H):
+    """
+    该函数首先使用边缘值填充数组，以确保其维度可被重采样因子整除。然后将填充的数组重塑为一个新形状，
+    其中每个像素块的大小都是重采样因子。函数然后沿两个维度取每个块的最大值，以获得重采样后的数组。
+    最后，函数删除任何填充像素，以返回具有所需维度的数组。
+    """
+
+    def motionCompensate(self, H):  #设置一个开关
         I = np.array([range(self.modelWidth)] * self.modelHeight).flatten()
         J = np.repeat(range(self.modelHeight), self.modelWidth)
         area_x=4
@@ -197,6 +228,122 @@ class ProbModel:
         self.temp_ages[:, J[cond], I[cond]] = 0
         self.temp_vars[self.temp_vars < self.MIN_BG_VAR] = self.MIN_BG_VAR
 
+        if self.alex:
+           alex_W_H = (aDi * (1 - aDj)).reshape(self.modelHeight, self.modelWidth)
+           alex_W_V = (aDj * (1 - aDi)).reshape(self.modelHeight, self.modelWidth)
+           alex_W_HV = (aDi * aDj).reshape(self.modelHeight, self.modelWidth)
+           alex_W_self = ((1 - aDi) * (1 - aDj)).reshape(self.modelHeight, self.modelWidth)
+           M = self.alex_means
+           V = self.alex_vars
+           A = self.alex_ages
+
+           alex_W = np.zeros((self.NUM_MODELS, self.modelHeight, self.modelWidth))
+
+           alex_tempMean = np.zeros(self.means.shape)
+           alex_tempAges = np.zeros(self.means.shape)
+
+           alex_NewI_H = idxNewI + np.sign(Di).astype(int)
+           alex_condH = (idxNewJ >= 0) & (idxNewJ < self.modelHeight) & (alex_NewI_H >= 0) & (
+                      alex_NewI_H < self.modelWidth)
+
+           alex_tempMean[:, J[alex_condH], I[alex_condH]] = alex_W_H[J[alex_condH], I[alex_condH]] * M[:, idxNewJ[alex_condH],
+                                                                                             alex_NewI_H[alex_condH]]
+           alex_tempAges[:, J[alex_condH], I[alex_condH]] = alex_W_H[J[alex_condH], I[alex_condH]] * A[:, idxNewJ[alex_condH],
+                                                                                             alex_NewI_H[alex_condH]]
+           alex_W[:, J[alex_condH], I[alex_condH]] += alex_W_H[J[alex_condH], I[alex_condH]]
+
+           alex_NewJ_V = idxNewJ + np.sign(Dj).astype(int)
+           alex_condV = (alex_NewJ_V >= 0) & (alex_NewJ_V < self.modelHeight) & (idxNewI >= 0) & (
+                    idxNewI < self.modelWidth)
+           alex_tempMean[:, J[alex_condV], I[alex_condV]] += alex_W_V[J[alex_condV], I[alex_condV]] * M[:,
+                                                                                              alex_NewJ_V[alex_condV],
+                                                                                              idxNewI[alex_condV]]
+           alex_tempAges[:, J[alex_condV], I[alex_condV]] += alex_W_V[J[alex_condV], I[alex_condV]] * A[:,
+                                                                                              alex_NewJ_V[alex_condV],
+                                                                                              idxNewI[alex_condV]]
+           alex_W[:, J[alex_condV], I[alex_condV]] += alex_W_V[J[alex_condV], I[alex_condV]]
+
+           alex_NewI_H = idxNewI + np.sign(Di).astype(int)
+           alex_NewJ_V = idxNewJ + np.sign(Dj).astype(int)
+           alex_condHV = (alex_NewJ_V >= 0) & (alex_NewJ_V < self.modelHeight) & (alex_NewI_H >= 0) & (
+                    alex_NewI_H < self.modelWidth)
+           alex_tempMean[:, J[alex_condHV], I[alex_condHV]] += alex_W_HV[J[alex_condHV], I[alex_condHV]] * M[:, alex_NewJ_V[
+                                                                                                            alex_condHV],
+                                                                                                   alex_NewI_H[
+                                                                                                       alex_condHV]]
+           alex_tempAges[:, J[alex_condHV], I[alex_condHV]] += alex_W_HV[J[alex_condHV], I[alex_condHV]] * A[:, alex_NewJ_V[
+                                                                                                            alex_condHV],
+                                                                                                   alex_NewI_H[
+                                                                                                       alex_condHV]]
+           alex_W[:, J[alex_condHV], I[alex_condHV]] += alex_W_HV[J[alex_condHV], I[alex_condHV]]
+
+           alex_condSelf = (idxNewJ >= 0) & (idxNewJ < self.modelHeight) & (idxNewI >= 0) & (idxNewI < self.modelWidth)
+           alex_tempMean[:, J[alex_condSelf], I[alex_condSelf]] += alex_W_self[J[alex_condSelf], I[alex_condSelf]] * M[:,
+                                                                                                             idxNewJ[
+                                                                                                                 alex_condSelf],
+                                                                                                             idxNewI[
+                                                                                                                 alex_condSelf]]
+           alex_tempAges[:, J[alex_condSelf], I[alex_condSelf]] += alex_W_self[J[alex_condSelf], I[alex_condSelf]] * A[:,
+                                                                                                              idxNewJ[
+                                                                                                                 alex_condSelf],
+                                                                                                             idxNewI[
+                                                                                                                 alex_condSelf]]
+           alex_W[:, J[alex_condSelf], I[alex_condSelf]] += alex_W_self[J[alex_condSelf], I[alex_condSelf]]
+
+           self.alex_temp_means[W != 0] = 0
+
+           self.alex_temp_ages[:] = 0
+           alex_W[alex_W == 0] = 1
+           self.alex_temp_means += alex_tempMean / alex_W
+           self.alex_temp_ages += alex_tempAges / alex_W
+
+           alex_temp_var = np.zeros(self.alex_means.shape)
+
+           alex_temp_var[:, J[alex_condH], I[alex_condH]] += W_H[J[alex_condH], I[alex_condH]] * (
+                    V[:, idxNewJ[alex_condH], alex_NewI_H[alex_condH]] +
+                    np.power(
+                        self.alex_temp_means[:, J[alex_condH], I[alex_condH]] -
+                        self.alex_means[:, idxNewJ[alex_condH],
+                        alex_NewI_H[alex_condH]],
+                        2))
+
+           alex_temp_var[:, J[alex_condV], I[alex_condV]] += W_V[J[alex_condV], I[alex_condV]] * (
+                    V[:, alex_NewJ_V[alex_condV], idxNewI[alex_condV]] +
+                    np.power(
+                        self.alex_temp_means[:, J[alex_condV], I[alex_condV]] -
+                        self.alex_means[:,
+                        alex_NewJ_V[alex_condV], idxNewI[alex_condV]],
+                        2))
+
+           alex_temp_var[:, J[alex_condHV], I[alex_condHV]] += W_HV[J[alex_condHV], I[alex_condHV]] * (
+                    V[:, alex_NewJ_V[alex_condHV], alex_NewI_H[alex_condHV]] +
+                    np.power(self.alex_temp_means[:, J[alex_condHV],
+                             I[alex_condHV]] -
+                             self.alex_means[:, alex_NewJ_V[alex_condHV],
+                             alex_NewI_H[alex_condHV]],
+                             2))
+
+           alex_temp_var[:, J[alex_condSelf], I[alex_condSelf]] += W_self[J[alex_condSelf], I[alex_condSelf]] * (
+                V[:, idxNewJ[alex_condSelf], idxNewI[alex_condSelf]] +
+                np.power(self.alex_temp_means[:, J[alex_condSelf], I[alex_condSelf]] -
+                         self.alex_means[:, idxNewJ[alex_condSelf], idxNewI[alex_condSelf]],
+                         2))
+
+           self.alex_temp_vars = alex_temp_var / alex_W
+           cond = (idxNewJ < 1) | (idxNewJ >= self.modelHeight - 1) | (idxNewI < 1) | (idxNewI >= self.modelWidth - 1)
+           self.alex_temp_vars[:, J[cond], I[cond]] = self.INIT_BG_VAR
+           self.alex_temp_ages[:, J[cond], I[cond]] = 0
+           self.alex_temp_vars[self.alex_temp_vars < self.MIN_BG_VAR] = self.MIN_BG_VAR
+
+    def exchange_model(self):
+        self.means =self.alex_means
+        self.ages =self.alex_ages
+        self.vars = self.alex_vars
+        self.temp_means =self.alex_temp_means
+        self.temp_ages =self.alex_temp_ages
+        self.temp_vars =self.alex_temp_vars
+        self.alex=False
+
     def update(self, gray):
         curMean = self.rebin(gray, (self.BLOCK_SIZE, self.BLOCK_SIZE))
         mm = self.NUM_MODELS - np.argmax(self.temp_ages[::-1], axis=0).reshape(-1) - 1
@@ -259,5 +406,54 @@ class ProbModel:
         self.ages = self.temp_ages.copy()
         self.ages[modelIndexMask] += 1
         self.ages[modelIndexMask & (self.ages > 30)] = 30
+        if self.alex:
+            alex_mm = self.NUM_MODELS - np.argmax(self.alex_temp_ages[::-1], axis=0).reshape(-1) - 1
+            alex_maxes = np.max(self.alex_temp_ages, axis=0)
+            alex_jj, alex_ii = np.arange(h * w) // w, np.arange(h * w) % w
+            alex_ii, alex_jj = alex_ii[alex_mm != 0], alex_jj[alex_mm != 0]
+            alex_mm = alex_mm[alex_mm != 0]
+            self.alex_temp_ages[alex_mm, alex_jj, alex_ii] = 0
+            self.alex_temp_ages[0] = alex_maxes
+
+            self.alex_temp_means[0, alex_jj, alex_ii] = self.alex_temp_means[alex_mm, alex_jj, alex_ii]
+            self.alex_temp_means[alex_mm, alex_jj, alex_ii] = curMean[alex_jj, alex_ii]
+
+            self.alex_temp_vars[0, alex_jj, alex_ii] = self.alex_temp_vars[alex_mm, alex_jj, alex_ii]
+            self.alex_temp_vars[alex_mm, alex_jj, alex_ii] = self.INIT_BG_VAR
+
+            alex_modelIndex = np.ones(curMean.shape).astype(int)
+            alex_cond1 = np.power(curMean - self.alex_temp_means[0], 2) < self.VAR_THRESH_MODEL_MATCH * self.alex_temp_vars[0]
+
+            alex_cond2 = np.power(curMean - self.alex_temp_means[1], 2) < self.VAR_THRESH_MODEL_MATCH * self.alex_temp_vars[1]
+            alex_modelIndex[alex_cond1] = 0
+            alex_modelIndex[alex_cond2 & ~alex_cond1] = 1
+            self.alex_temp_ages[1][(~alex_cond1) & (~alex_cond2)] = 0
+
+            alex_modelIndexMask = np.arange(self.alex_means.shape[0]).reshape(-1, 1, 1) == alex_modelIndex
+
+            alex_alpha = self.alex_temp_ages / (self.alex_temp_ages + 1)
+            alex_alpha[self.alex_temp_ages < 1] = 0
+            alex_alpha[~alex_modelIndexMask] = 1
+            self.alex_means = self.alex_temp_means * alex_alpha + curMean * (1 - alex_alpha)
+
+            alex_jj, alex_ii = np.arange(h * w) // w, np.arange(h * w) % w
+
+            alex_bigMeanIndex = np.kron(self.alex_means[alex_modelIndex.reshape(-1), alex_jj, alex_ii].reshape(h, -1),
+                                   np.ones((self.BLOCK_SIZE, self.BLOCK_SIZE)))
+            alex_bigMeanIndex = np.pad(alex_bigMeanIndex, ((0, a), (0, b)), 'edge')
+
+            alex_maxes = self.rebinMax(np.power(gray - alex_bigMeanIndex, 2), (self.BLOCK_SIZE, self.BLOCK_SIZE))
+
+            alex_alpha = self.alex_temp_ages / (self.alex_temp_ages + 1)
+            alex_alpha[~alex_modelIndexMask] = 1
+
+            self.alex_vars = self.alex_temp_vars * alex_alpha + (1 - alex_alpha) * alex_maxes
+
+            self.alex_vars[(self.alex_vars < self.INIT_BG_VAR) & alex_modelIndexMask & (self.alex_ages == 0)] = self.INIT_BG_VAR
+            self.alex_vars[(self.alex_vars < self.MIN_BG_VAR) & alex_modelIndexMask] = self.MIN_BG_VAR
+
+            self.alex_ages = self.alex_temp_ages.copy()
+            self.alex_ages[alex_modelIndexMask] += 1
+            self.alex_ages[alex_modelIndexMask & (self.alex_ages > 30)] = 30
 
         return out

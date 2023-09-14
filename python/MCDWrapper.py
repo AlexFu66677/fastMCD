@@ -115,6 +115,7 @@ class MCDWrapper:
         self.model = ProbModel.ProbModel()
         self.tracked_list = None
         self.bgs_tracked_list = None
+        self.fream_num = None
 
     def init(self, image):
         self.imgGray = image
@@ -123,6 +124,8 @@ class MCDWrapper:
         self.model.init(self.imgGray)
         self.tracked_list = []
         self.bgs_tracked_list = []
+
+        self.fream_num = 0
 
     def fdCompensate(self, H, pre):
         height, width = pre.shape
@@ -180,7 +183,6 @@ class MCDWrapper:
         return bg
 
     def run(self, frame):
-
         framediff_res = []
         background_res = []
         bgs_tracked_res = []
@@ -190,9 +192,19 @@ class MCDWrapper:
         self.imgGray = frame
         if self.imgGrayPrev is None:
             self.imgGrayPrev = self.imgGray.copy()
+
         self.lucasKanade.RunTrack(self.imgGray, self.imgGrayPrev)
+        if self.fream_num == 119:
+            self.model.alexinit(frame)
+
         self.model.motionCompensate(self.lucasKanade.H)
+
+        if self.fream_num == 130:
+            self.model.exchange_model()
+            self.fream_num = 0
+
         bgs_mask = self.model.update(frame)
+
         kernel = np.ones((5, 5), np.uint8)
         thresh = cv2.dilate(bgs_mask, kernel, iterations=2)
         thresh = cv2.erode(thresh, kernel, iterations=2)
@@ -256,10 +268,11 @@ class MCDWrapper:
                     rr = mse(old_bbox, new_bbox)
                 except:
                     print(num)
+                print(rr)
                 if rr > 200:
                     new_bgs_tracked_res.append(i)
 
-
+        #
         # res = self.fdCompensate(self.lucasKanade.H, self.imgGray)
         # mask = self.imgGrayPrev - res
         # thresh = cv2.threshold(mask, 50, 255, cv2.THRESH_BINARY)[1]
@@ -302,6 +315,7 @@ class MCDWrapper:
         #     self.tracked_list = [obj for obj in self.tracked_list if obj.missCounter < 2]
 
         self.imgGrayPrev = self.imgGray.copy()
+        self.fream_num += 1
         # return bgs_tracked_res,fd_tracked_res
         return new_bgs_tracked_res, bgs_tracked_list_point
 
