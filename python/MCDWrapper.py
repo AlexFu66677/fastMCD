@@ -3,20 +3,29 @@ import cv2
 import KLTWrapper
 import ProbModel
 from PIL import Image
-
-
+import imagehash
+from skimage.metrics import structural_similarity as ssim
 def mse(image1, image2):
     # 计算均方误差
-    err = np.sum((image1.astype("float") - image2.astype("float")) ** 2)
-    err /= float(image1.shape[0] * image1.shape[1])
+    # abs = (image1.astype("float") - image2.astype("float"))**2
+    # abs = abs.flatten()
+    # abs = abs[abs > 100]
+    # err = abs.mean()
+    err = (image1.astype("float") - image2.astype("float")) ** 2
+    err = err.flatten()
+    err = err[err > 4]
+    err = err.mean()
+    # err = np.sum(err)
+    # err /= float(image1.shape[0] * image1.shape[1])
     return err
 
 
-# def dhash(image, hash_size=8):
-#     return imagehash.average_hash(Image.open(image), hash_size=hash_size)
+def dhash(image, hash_size=4):
+    image = Image.fromarray(image)
+    return imagehash.average_hash(image, hash_size=hash_size)
 
 
-def hamming_distance(hash1, hash2, hash_size=8):
+def hamming_distance(hash1, hash2, hash_size=4):
     distance = hash1 - hash2
     similarity = 1 - (distance / (hash_size * hash_size))
     return similarity
@@ -124,63 +133,7 @@ class MCDWrapper:
         self.model.init(self.imgGray)
         self.tracked_list = []
         self.bgs_tracked_list = []
-
         self.fream_num = 0
-
-    def fdCompensate(self, H, pre):
-        height, width = pre.shape
-        num_batch = 1
-        pos_x = np.tile(np.arange(width), [height * num_batch])
-        grid_y = np.tile(np.expand_dims(np.arange(height), 1), [1, width])
-        pos_y = np.tile(np.reshape(grid_y, [-1]), [num_batch])
-        points = np.array([pos_x, pos_y])
-        point = points.transpose().astype(np.float32).reshape(height, width, 1, 2)
-        point0 = point[:height // 4, :width // 4, :, :].reshape(-1, 1, 2)
-        point1 = point[:height // 4, width // 4:width // 2, :, :].reshape(-1, 1, 2)
-        point2 = point[:height // 4, width // 2:-width // 4, :, :].reshape(-1, 1, 2)
-        point3 = point[:height // 4, -width // 4:, :, :].reshape(-1, 1, 2)
-        point4 = point[height // 4:height // 2, :width // 4, :, :].reshape(-1, 1, 2)
-        point5 = point[height // 4:height // 2, width // 4:width // 2, :, :].reshape(-1, 1, 2)
-        point6 = point[height // 4:height // 2, width // 2:-width // 4, :, :].reshape(-1, 1, 2)
-        point7 = point[height // 4:height // 2, -width // 4:, :, :].reshape(-1, 1, 2)
-        point8 = point[height // 2:-height // 4, :width // 4, :, :].reshape(-1, 1, 2)
-        point9 = point[height // 2:-height // 4, width // 4:width // 2, :, :].reshape(-1, 1, 2)
-        point10 = point[height // 2:-height // 4, width // 2:-width // 4, :, :].reshape(-1, 1, 2)
-        point11 = point[height // 2:-height // 4, -width // 4:, :, :].reshape(-1, 1, 2)
-        point12 = point[-height // 4:, :width // 4, :, :].reshape(-1, 1, 2)
-        point13 = point[-height // 4:, width // 4:width // 2, :, :].reshape(-1, 1, 2)
-        point14 = point[-height // 4:, width // 2:-width // 4, :, :].reshape(-1, 1, 2)
-        point15 = point[-height // 4:, -width // 4:, :, :].reshape(-1, 1, 2)
-        tempMean0 = cv2.perspectiveTransform(point0, H[0]).reshape(-1, width // 4, 1, 2)
-        tempMean1 = cv2.perspectiveTransform(point1, H[1]).reshape(-1, width // 4, 1, 2)
-        tempMean2 = cv2.perspectiveTransform(point2, H[2]).reshape(-1, width // 4, 1, 2)
-        tempMean3 = cv2.perspectiveTransform(point3, H[3]).reshape(-1, width // 4, 1, 2)
-        tempMean4 = cv2.perspectiveTransform(point4, H[4]).reshape(-1, width // 4, 1, 2)
-        tempMean5 = cv2.perspectiveTransform(point5, H[5]).reshape(-1, width // 4, 1, 2)
-        tempMean6 = cv2.perspectiveTransform(point6, H[6]).reshape(-1, width // 4, 1, 2)
-        tempMean7 = cv2.perspectiveTransform(point7, H[7]).reshape(-1, width // 4, 1, 2)
-        tempMean8 = cv2.perspectiveTransform(point8, H[8]).reshape(-1, width // 4, 1, 2)
-        tempMean9 = cv2.perspectiveTransform(point9, H[9]).reshape(-1, width // 4, 1, 2)
-        tempMean10 = cv2.perspectiveTransform(point10, H[10]).reshape(-1, width // 4, 1, 2)
-        tempMean11 = cv2.perspectiveTransform(point11, H[11]).reshape(-1, width // 4, 1, 2)
-        tempMean12 = cv2.perspectiveTransform(point12, H[12]).reshape(-1, width // 4, 1, 2)
-        tempMean13 = cv2.perspectiveTransform(point13, H[13]).reshape(-1, width // 4, 1, 2)
-        tempMean14 = cv2.perspectiveTransform(point14, H[14]).reshape(-1, width // 4, 1, 2)
-        tempMean15 = cv2.perspectiveTransform(point15, H[15]).reshape(-1, width // 4, 1, 2)
-        TempMean0 = np.concatenate([tempMean0, tempMean1, tempMean2, tempMean3], axis=1).reshape(-1, 1, 2)
-        TempMean1 = np.concatenate([tempMean4, tempMean5, tempMean6, tempMean7], axis=1).reshape(-1, 1, 2)
-        TempMean2 = np.concatenate([tempMean8, tempMean9, tempMean10, tempMean11], axis=1).reshape(-1, 1, 2)
-        TempMean3 = np.concatenate([tempMean12, tempMean13, tempMean14, tempMean15], axis=1).reshape(-1, 1, 2)
-        tempMean = np.concatenate([TempMean0, TempMean1, TempMean2, TempMean3], axis=0).reshape(-1, 1, 2)
-        NewX = tempMean[:, :, 0].flatten().astype(np.int32)
-        NewY = tempMean[:, :, 1].flatten().astype(np.int32)
-        x0 = np.clip(NewX, 0, width - 1)
-        y0 = np.clip(NewY, 0, height - 1)
-        bg = np.ones([height, width]) * 255
-        dim = width * height
-        for i in range(dim):
-            bg[y0[i]][x0[i]] = pre[pos_y[i]][pos_x[i]]
-        return bg
 
     def run(self, frame):
         framediff_res = []
@@ -206,42 +159,51 @@ class MCDWrapper:
         bgs_mask = self.model.update(frame)
 
         kernel = np.ones((5, 5), np.uint8)
-        thresh = cv2.dilate(bgs_mask, kernel, iterations=2)
-        thresh = cv2.erode(thresh, kernel, iterations=2)
+        thresh = cv2.dilate(bgs_mask, kernel, iterations=1)
+        thresh = cv2.erode(thresh, kernel, iterations=1)
         contours, hierarchy = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
             (x, y, w, h) = cv2.boundingRect(contour)
-            if w * h < 60:
+            if cv2.contourArea(contour) < 50:
                 continue
-            background_res.append((x, y, w, h))
+            background_res.append((x, y-2, w, h+2))
         for tracked in self.bgs_tracked_list:
             tracked.update_status = False
         if len(self.bgs_tracked_list) == 0:
             for contour in contours:
-                if cv2.contourArea(contour) < 100:
+                if cv2.contourArea(contour) < 50:
                     continue
                 (x, y, w, h) = cv2.boundingRect(contour)
-                self.bgs_tracked_list.append(tracker(x, y, w, h))
+                self.bgs_tracked_list.append(tracker(x, y-2, w, h+2))
         else:
             for box in background_res:
+                num = get_region((box[0], box[1]), 1920, 1080)
+                new_point = cv2.perspectiveTransform(np.asarray([box[0], box[1]]).reshape(-1, 1, 2).astype(np.float32),
+                                                     self.lucasKanade.H[num]).reshape(-1)
                 matched = False
                 for tracked in self.bgs_tracked_list:
-                    if calculate_iou(box, tracked.box) > 0.4:
+                    if calculate_iou((new_point[0],new_point[1],box[2],box[3]), tracked.box) > 0.5:
+                # matched = False
+                # for tracked in self.bgs_tracked_list:
+                #     if calculate_iou(box, tracked.box) > 0.4:
                         tracked.update(box)
                         matched = True
                         tracked.hitCounter += 1
                         tracked.missCounter = 0
                 if not matched:
                     self.bgs_tracked_list.append(tracker(box[0], box[1], box[2], box[3]))
-
             self.bgs_tracked_list = [obj for obj in self.bgs_tracked_list if obj.missCounter < 3]
             for i in range(len(self.bgs_tracked_list)):
                 if not self.bgs_tracked_list[i].update_status:
                     self.bgs_tracked_list[i].missCounter += 1
+                    # bgs_tracked_res.append(self.bgs_tracked_list[i].box)
                     continue
-                if self.bgs_tracked_list[i].hitCounter > 3:
+            # self.bgs_tracked_list = [obj for obj in self.bgs_tracked_list if obj.missCounter < 3]
+            # for i in range(len(self.bgs_tracked_list)):
+                if self.bgs_tracked_list[i].hitCounter > 2:
                     bgs_tracked_res.append(self.bgs_tracked_list[i].box)
 
+        bgs_tracked_res = np.unique(bgs_tracked_res, axis=0)
         bgs_tracked_list_point = []
         new_bgs_tracked_res = []
         for i in bgs_tracked_res:
@@ -264,60 +226,19 @@ class MCDWrapper:
             if old_bbox.shape[0] != new_bbox.shape[0] or old_bbox.shape[1] != new_bbox.shape[1]:
                 continue
             else:
-                try:
-                    rr = mse(old_bbox, new_bbox)
-                except:
-                    print(num)
-                print(rr)
-                if rr > 200:
+                # hash1=dhash(old_bbox)
+                # hash2=dhash(new_bbox)
+                # rr=hamming_distance(hash1, hash2)
+                # rr=ssim(old_bbox, new_bbox)
+                # print(rr)
+                rr = mse(old_bbox, new_bbox)
+                if rr > 400:
                     new_bgs_tracked_res.append(i)
-
-        #
-        # res = self.fdCompensate(self.lucasKanade.H, self.imgGray)
-        # mask = self.imgGrayPrev - res
-        # thresh = cv2.threshold(mask, 50, 255, cv2.THRESH_BINARY)[1]
-        # kernel = np.ones((5, 5), np.uint8)
-        # thresh = cv2.dilate(thresh, kernel, iterations=2)
-        # thresh = cv2.erode(thresh, kernel, iterations=2)
-        # thresh = thresh.astype(np.uint8)
-        # contours, hierarchy = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        # for contour in contours:
-        #     if cv2.contourArea(contour) < 50:
-        #         continue
-        #     (x, y, w, h) = cv2.boundingRect(contour)
-        #     framediff_res.append((x, y, w, h))
-        # for tracked in self.tracked_list:
-        #     tracked.update_status = False
-        # if len(self.tracked_list) == 0:
-        #     for contour in contours:
-        #         if cv2.contourArea(contour) < 100:
-        #             continue
-        #         (x, y, w, h) = cv2.boundingRect(contour)
-        #         self.tracked_list.append(tracker(x, y, w, h))
-        # else:
-        #     for box in framediff_res:
-        #         matched = False
-        #         for tracked in self.tracked_list:
-        #             if calculate_iou(box, tracked.box) > 0.5:
-        #                 tracked.update(box)
-        #                 matched = True
-        #                 tracked.hitCounter += 1
-        #                 tracked.missCounter = 0
-        #         if not matched:
-        #             self.tracked_list.append(tracker(box[0], box[1], box[2], box[3]))
-        #
-        #     for i in range(len(self.tracked_list)):
-        #         if not self.tracked_list[i].update_status:
-        #             self.tracked_list[i].missCounter += 1
-        #             continue
-        #         if self.tracked_list[i].hitCounter > 3:
-        #             fd_tracked_res.append(self.tracked_list[i].box)
-        #     self.tracked_list = [obj for obj in self.tracked_list if obj.missCounter < 2]
 
         self.imgGrayPrev = self.imgGray.copy()
         self.fream_num += 1
         # return bgs_tracked_res,fd_tracked_res
-        return new_bgs_tracked_res, bgs_tracked_list_point
-
-
+        new_bgs_tracked_res = np.unique(new_bgs_tracked_res, axis=0)
+        return background_res,bgs_tracked_res, new_bgs_tracked_res,thresh
+        # return bgs_tracked_res, bgs_tracked_list_point,thresh
 

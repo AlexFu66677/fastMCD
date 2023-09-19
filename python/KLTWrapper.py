@@ -99,51 +99,153 @@ class KLTWrapper:
             H0, status = cv2.findHomography(a[0], b[0], cv2.RANSAC, 1.0)
             if H0 is None:
                H0=np.identity(3)
-        H1, status = cv2.findHomography(a[1], b[1], cv2.RANSAC, 1.0)
-        if H1 is None:
-            H1=np.identity(3)
-        H2, status = cv2.findHomography(a[2], b[2], cv2.RANSAC, 1.0)
-        if H2 is None:
-            H2=np.identity(3)
-        H3, status = cv2.findHomography(a[3], b[3], cv2.RANSAC, 1.0)
-        if H3 is None:
-            H3=np.identity(3)
-        H4, status = cv2.findHomography(a[4], b[4], cv2.RANSAC, 1.0)
-        if H4 is None:
-            H4=np.identity(3)
-        H5, status = cv2.findHomography(a[5], b[5], cv2.RANSAC, 1.0)
-        if H5 is None:
-            H5=np.identity(3)
-        H6, status = cv2.findHomography(a[6], b[6], cv2.RANSAC, 1.0)
-        if H6 is None:
-            H6=np.identity(3)
-        H7, status = cv2.findHomography(a[7], b[7], cv2.RANSAC, 1.0)
-        if H7 is None:
-            H7=np.identity(3)
-        H8, status = cv2.findHomography(a[8], b[8], cv2.RANSAC, 1.0)
-        if H8 is None:
-            H8=np.identity(3)
-        H9, status = cv2.findHomography(a[9], b[9], cv2.RANSAC, 1.0)
-        if H9 is None:
-            H9=np.identity(3)
-        H10, status = cv2.findHomography(a[10], b[10], cv2.RANSAC, 1.0)
-        if H10 is None:
-            H10=np.identity(3)
-        H11, status = cv2.findHomography(a[11], b[11], cv2.RANSAC, 1.0)
-        if H11 is None:
-            H11=np.identity(3)
-        H12, status = cv2.findHomography(a[12], b[12], cv2.RANSAC, 1.0)
-        if H12 is None:
-            H12=np.identity(3)
-        H13, status = cv2.findHomography(a[13], b[13], cv2.RANSAC, 1.0)
-        if H13 is None:
-            H13=np.identity(3)
-        H14, status = cv2.findHomography(a[14], b[14], cv2.RANSAC, 1.0)
-        if H14 is None:
-            H14=np.identity(3)
-        H15, status = cv2.findHomography(a[15], b[15], cv2.RANSAC, 1.0)
-        if H15 is None:
-            H15=np.identity(3)
+
+        if len(a[1])<4:
+            H1 = np.identity(3)
+        else:
+            H1, status = cv2.findHomography(a[1], b[1], cv2.RANSAC, 1.0)
+            if H1 is None:
+               H1 = np.identity(3)
+
+        if len(a[2])<4:
+            H2 = np.identity(3)
+        else:
+            H2, status = cv2.findHomography(a[2], b[2], cv2.RANSAC, 1.0)
+            if H2 is None:
+               H2= np.identity(3)
+
+        if len(a[3])<4:
+            H3 = np.identity(3)
+        else:
+            H3, status = cv2.findHomography(a[3], b[3], cv2.RANSAC, 1.0)
+            if H3 is None:
+               H3 = np.identity(3)
+
+        if len(a[4])<4:
+            H4 = np.identity(3)
+        else:
+            H4, status = cv2.findHomography(a[4], b[4], cv2.RANSAC, 1.0)
+            if H4 is None:
+               H4 = np.identity(3)
+
+        if len(a[5])<4:
+            H5 = np.identity(3)
+        else:
+            H5, status = cv2.findHomography(a[5], b[5], cv2.RANSAC, 1.0)
+            if H5 is None:
+               H5 = np.identity(3)
+
+        if len(a[6])<4:
+            H6 = np.identity(3)
+        else:
+            H6, status = cv2.findHomography(a[6], b[6], cv2.RANSAC, 1.0)
+            if H6 is None:
+               H6 = np.identity(3)
+
+        if len(a[7])<4:
+            H7 = np.identity(3)
+        else:
+            H7, status = cv2.findHomography(a[7], b[7], cv2.RANSAC, 1.0)
+            if H7 is None:
+               H7 = np.identity(3)
+
+        if len(a[8])<4:
+            H8 = np.identity(3)
+        else:
+            H8, status = cv2.findHomography(a[8], b[8], cv2.RANSAC, 1.0)
+            if H8 is None:
+               H8 = np.identity(3)
+
+        if len(a[9])<4:
+            H9 = np.identity(3)
+        else:
+            H9, status = cv2.findHomography(a[9], b[9], cv2.RANSAC, 1.0)
+            if H9 is None:
+               H9 = np.identity(3)
+
+        if len(a[10])<4:
+            H10 = np.identity(3)
+        else:
+            H10, status = cv2.findHomography(a[10], b[10], cv2.RANSAC, 1.0)
+            if H10 is None:
+               H10 = np.identity(3)
+
+        if len(a[11])<4:
+            H11 = np.identity(3)
+        else:
+            H11, status = cv2.findHomography(a[11], b[11], cv2.RANSAC, 1.0)
+            if H11 is None:
+               H11 = np.identity(3)
+
+        if len(a[12])<4:
+            H12 = np.identity(3)
+        else:
+            H12, status = cv2.findHomography(a[12], b[12], cv2.RANSAC, 1.0)
+            if H12 is None:
+               H12 = np.identity(3)
+
+        if len(a[13])<4:
+            H13 = np.identity(3)
+        else:
+            H13, status = cv2.findHomography(a[13], b[13], cv2.RANSAC, 1.0)
+            if H13 is None:
+               H13 = np.identity(3)
+
+        if len(a[14])<4:
+            H14 = np.identity(3)
+        else:
+            H14, status = cv2.findHomography(a[14], b[14], cv2.RANSAC, 1.0)
+            if H14 is None:
+               H14 = np.identity(3)
+
+        if len(a[15])<4:
+            H15= np.identity(3)
+        else:
+            H15, status = cv2.findHomography(a[15], b[15], cv2.RANSAC, 1.0)
+            if H15 is None:
+               H15 = np.identity(3)
+        # H2, status = cv2.findHomography(a[2], b[2], cv2.RANSAC, 1.0)
+        # if H2 is None:
+        #     H2=np.identity(3)
+        # H3, status = cv2.findHomography(a[3], b[3], cv2.RANSAC, 1.0)
+        # if H3 is None:
+        #     H3=np.identity(3)
+        # H4, status = cv2.findHomography(a[4], b[4], cv2.RANSAC, 1.0)
+        # if H4 is None:
+        #     H4=np.identity(3)
+        # H5, status = cv2.findHomography(a[5], b[5], cv2.RANSAC, 1.0)
+        # if H5 is None:
+        #     H5=np.identity(3)
+        # H6, status = cv2.findHomography(a[6], b[6], cv2.RANSAC, 1.0)
+        # if H6 is None:
+        #     H6=np.identity(3)
+        # H7, status = cv2.findHomography(a[7], b[7], cv2.RANSAC, 1.0)
+        # if H7 is None:
+        #     H7=np.identity(3)
+        # H8, status = cv2.findHomography(a[8], b[8], cv2.RANSAC, 1.0)
+        # if H8 is None:
+        #     H8=np.identity(3)
+        # H9, status = cv2.findHomography(a[9], b[9], cv2.RANSAC, 1.0)
+        # if H9 is None:
+        #     H9=np.identity(3)
+        # H10, status = cv2.findHomography(a[10], b[10], cv2.RANSAC, 1.0)
+        # if H10 is None:
+        #     H10=np.identity(3)
+        # H11, status = cv2.findHomography(a[11], b[11], cv2.RANSAC, 1.0)
+        # if H11 is None:
+        #     H11=np.identity(3)
+        # H12, status = cv2.findHomography(a[12], b[12], cv2.RANSAC, 1.0)
+        # if H12 is None:
+        #     H12=np.identity(3)
+        # H13, status = cv2.findHomography(a[13], b[13], cv2.RANSAC, 1.0)
+        # if H13 is None:
+        #     H13=np.identity(3)
+        # H14, status = cv2.findHomography(a[14], b[14], cv2.RANSAC, 1.0)
+        # if H14 is None:
+        #     H14=np.identity(3)
+        # H15, status = cv2.findHomography(a[15], b[15], cv2.RANSAC, 1.0)
+        # if H15 is None:
+        #     H15=np.identity(3)
 
         try:
             self.H = np.array([H0, H1, H2, H3,H4,H5,H6,H7,H8,H9,H10,H11,H12,H13,H14,H15])
