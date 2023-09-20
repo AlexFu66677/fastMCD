@@ -13,7 +13,7 @@ def mse(image1, image2):
     # err = abs.mean()
     err = (image1.astype("float") - image2.astype("float")) ** 2
     err = err.flatten()
-    err = err[err > 4]
+    # err = err[err > 4]
     err = err.mean()
     # err = np.sum(err)
     # err /= float(image1.shape[0] * image1.shape[1])
@@ -164,14 +164,14 @@ class MCDWrapper:
         contours, hierarchy = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
             (x, y, w, h) = cv2.boundingRect(contour)
-            if cv2.contourArea(contour) < 50:
+            if cv2.contourArea(contour) < 40:
                 continue
             background_res.append((x, y-2, w, h+2))
         for tracked in self.bgs_tracked_list:
             tracked.update_status = False
         if len(self.bgs_tracked_list) == 0:
             for contour in contours:
-                if cv2.contourArea(contour) < 50:
+                if cv2.contourArea(contour) < 40:
                     continue
                 (x, y, w, h) = cv2.boundingRect(contour)
                 self.bgs_tracked_list.append(tracker(x, y-2, w, h+2))
@@ -182,7 +182,7 @@ class MCDWrapper:
                                                      self.lucasKanade.H[num]).reshape(-1)
                 matched = False
                 for tracked in self.bgs_tracked_list:
-                    if calculate_iou((new_point[0],new_point[1],box[2],box[3]), tracked.box) > 0.5:
+                    if calculate_iou((new_point[0],new_point[1],box[2],box[3]), tracked.box) > 0.4:
                 # matched = False
                 # for tracked in self.bgs_tracked_list:
                 #     if calculate_iou(box, tracked.box) > 0.4:
@@ -232,7 +232,7 @@ class MCDWrapper:
                 # rr=ssim(old_bbox, new_bbox)
                 # print(rr)
                 rr = mse(old_bbox, new_bbox)
-                if rr > 400:
+                if rr > 250:
                     new_bgs_tracked_res.append(i)
 
         self.imgGrayPrev = self.imgGray.copy()
