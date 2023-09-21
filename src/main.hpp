@@ -19,10 +19,10 @@
 // SOFTWARE IS PROVIDED ``AS IS''  AND WITHOUT ANY WARRANTIES.  USE AT
 // YOUR OWN RISK!
 
-#include <stdio.h>
-#include <stdlib.h>
+// #include <stdio.h>
+// #include <stdlib.h>
 
-#include	<cv.h>
-#include	<highgui.h>
+// #include	<cv.h>
+// #include	<highgui.h>
 
-#include	"MCDWrapper.hpp"
+// #include	"MCDWrapper.hpp"

@@ -31,7 +31,9 @@
 #include	<vector>
 #include	<algorithm>
 
-#include "cv.h"
+#include    <opencv2/imgproc.hpp>
+#include    <opencv/cv.h>
+
 
 /************************************************************************/
 /*  Necessary includes for this Algorithm                               */

@@ -20,8 +20,7 @@
 // YOUR OWN RISK!
 
 #pragma once
-
-#include <cv.h>
+#include <opencv/cv.h>
 
 #define GRID_SIZE_W (32)
 #define GRID_SIZE_H (24)
