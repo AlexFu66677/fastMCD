@@ -30,10 +30,8 @@
 #include	<cstring>
 #include	<vector>
 #include	<algorithm>
-
 #include    <opencv2/imgproc.hpp>
 #include    <opencv/cv.h>
-
 
 /************************************************************************/
 /*  Necessary includes for this Algorithm                               */
@@ -45,9 +43,9 @@ class ProbModel {
 
  public:
 
-	IplImage * m_Cur;
-	float *m_DistImg;
-
+	Mat m_Cur;
+	Mat m_DistImg;
+    Mat mask;
 	float *m_Mean[NUM_MODELS];
 	float *m_Var[NUM_MODELS];
 	float *m_Age[NUM_MODELS];
@@ -63,11 +61,9 @@ class ProbModel {
 
 	int obsWidth;
 	int obsHeight;
-
+    std::vector<char>res;
  public:
 	 ProbModel() {
-
-		m_DistImg = 0;
 
 		for (int i = 0; i < NUM_MODELS; ++i) {
 			m_Mean[i] = 0;
@@ -83,10 +79,6 @@ class ProbModel {
 	}
 
 	void uninit(void) {
-		if (m_DistImg != 0) {
-			delete m_DistImg;
-			m_DistImg = 0;
-		}
 		for (int i = 0; i < NUM_MODELS; ++i) {
 			if (m_Mean[i] != 0) {
 				delete m_Mean[i];
@@ -120,21 +112,21 @@ class ProbModel {
 
 	}
 
-	void init(IplImage * pInputImg) {
+	void init(Mat pInputImg) {
 
 		uninit();
 
 		m_Cur = pInputImg;
 
-		obsWidth = pInputImg->width;
-		obsHeight = pInputImg->height;
+		obsWidth = pInputImg.cols;
+		obsHeight = pInputImg.rows;
 
 		modelWidth = obsWidth / BLOCK_SIZE;
 		modelHeight = obsHeight / BLOCK_SIZE;
 
 		/////////////////////////////////////////////////////////////////////////////
 		// Initialize Storage
-		m_DistImg = new float[obsWidth * obsHeight];
+		m_DistImg = Mat::zeros(obsHeight,obsWidth,CV_32FC1);
 
 		for (int i = 0; i < NUM_MODELS; ++i) {
 			m_Mean[i] = new float[modelWidth * modelHeight];
@@ -163,19 +155,15 @@ class ProbModel {
 		h[7] = 0.0;
 		h[8] = 1.0;
 
-		motionCompensate(h);
-		update(NULL);
+		motionCompensate(h,0);
+		update(pInputImg);
 
 	}
 
-	void motionCompensate(double h[9]) {
+	void motionCompensate(double h[9],int frame_num) {
 
 		int curModelWidth = modelWidth;
 		int curModelHeight = modelHeight;
-
-		BYTE *pCur = (BYTE *) m_Cur->imageData;
-
-		int obsWidthStep = m_Cur->widthStep;
 
 		// compensate models for the current view
 		for (int j = 0; j < curModelHeight; ++j) {
@@ -331,7 +319,7 @@ class ProbModel {
 							}
 						}
 					}
-#endif
+ #endif
 					// Self
 					if (idxNewI >= 0 && idxNewI < curModelWidth && idxNewJ >= 0 && idxNewJ < curModelHeight) {
 						int idxNew = idxNewI + idxNewJ * modelWidth;
@@ -357,6 +345,11 @@ class ProbModel {
 					m_Var_Temp[m][i + j * modelWidth] = MAX(m_Var_Temp[m][i + j * modelWidth], MIN_BG_VAR);
 				}
 				if (idxNewI < 1 || idxNewI >= modelWidth - 1 || idxNewJ < 1 || idxNewJ >= modelHeight - 1) {
+				// if(frame_num==446 && i + j * modelWidth==2301)
+				// {
+				// 	std::cout<<1;
+				// }
+				// if (idxNewI < 1 || idxNewJ < 1) {
 					for (int m = 0; m < NUM_MODELS; ++m) {
 						m_Var_Temp[m][i + j * modelWidth] = INIT_BG_VAR;
 						m_Age_Temp[m][i + j * modelWidth] = 0;
@@ -372,21 +365,12 @@ class ProbModel {
 
 	}
 
-	void update(IplImage * pOutputImg) {
-
-		BYTE *pOut;
-		if (pOutputImg != NULL) {
-			cvSet(pOutputImg, CV_RGB(0, 0, 0));
-			pOut = (BYTE *) pOutputImg->imageData;
-		}
-
+	void update(const Mat& pOutputImg) {
+		// cv::cvtColor(pOutputImg, pOutputImg, cv::COLOR_BGR2GRAY);
 		int curModelWidth = modelWidth;
 		int curModelHeight = modelHeight;
-
-		BYTE *pCur = (BYTE *) m_Cur->imageData;
-
-		int obsWidthStep = m_Cur->widthStep;
-
+		res.clear();
+		mask = Mat::zeros(obsHeight, obsWidth, CV_8UC1);
 		//////////////////////////////////////////////////////////////////////////
 		// Find Matching Model
 		memset(m_ModelIdx, 0, sizeof(int) * modelHeight * modelWidth);
@@ -411,7 +395,7 @@ class ProbModel {
 						if (idx_i < 0 || idx_i >= obsWidth || idx_j < 0 || idx_j >= obsHeight)
 							continue;
 
-						cur_mean += pCur[idx_i + idx_j * obsWidthStep];
+						cur_mean += pOutputImg.at<uchar>(idx_j, idx_i);
 						elem_cnt += 1.0;
 					}
 				}	//loop for pixels
@@ -442,6 +426,7 @@ class ProbModel {
 				//////////////////////////////////////////////////////////////////////////
 				// Select Model 
 				// Check Match against 0
+
 				if (pow(cur_mean - m_Mean_Temp[0][bIdx_i + bIdx_j * modelWidth], (int)2) < VAR_THRESH_MODEL_MATCH * m_Var_Temp[0][bIdx_i + bIdx_j * modelWidth]) {
 					m_ModelIdx[bIdx_i + bIdx_j * modelWidth] = 0;
 				}
@@ -486,7 +471,7 @@ class ProbModel {
 						if (idx_i < 0 || idx_i >= obsWidth || idx_j < 0 || idx_j >= obsHeight)
 							continue;
 
-						obs_mean[nMatchIdx] += pCur[idx_i + idx_j * obsWidthStep];
+						obs_mean[nMatchIdx] += pOutputImg.at<uchar>(idx_j, idx_i);
 						++nElemCnt[nMatchIdx];
 					}
 				}
@@ -511,6 +496,7 @@ class ProbModel {
 				}
 			}
 		}
+
 		for (int bIdx_j = 0; bIdx_j < curModelHeight; bIdx_j++) {
 			for (int bIdx_i = 0; bIdx_i < curModelWidth; bIdx_i++) {
 				// TODO: OPTIMIZE THIS PART SO THAT WE DO NOT CALCULATE THIS (LUT)
@@ -538,22 +524,25 @@ class ProbModel {
 						}
 
 						float pixelDist = 0.0;
-						float fDiff = pCur[idx_i + idx_j * obsWidthStep] - m_Mean[nMatchIdx][bIdx_i + bIdx_j * modelWidth];
+						float fDiff = pOutputImg.at<uchar>(idx_j, idx_i)- m_Mean[nMatchIdx][bIdx_i + bIdx_j * modelWidth];
 						pixelDist += pow(fDiff, (int)2);
 
-						m_DistImg[idx_i + idx_j * obsWidthStep] = pow(pCur[idx_i + idx_j * obsWidthStep] - m_Mean[0][bIdx_i + bIdx_j * modelWidth], (int)2);
+						m_DistImg.at<float>(idx_j, idx_i) = pow(pOutputImg.at<uchar>(idx_j, idx_i) - m_Mean[0][bIdx_i + bIdx_j * modelWidth], (int)2);
+						
+						// float a= m_DistImg.at<uchar>(idx_j, idx_i)
 
-						if (pOutputImg != NULL && m_Age_Temp[0][bIdx_i + bIdx_j * modelWidth] > 1) {
+						if (m_Age_Temp[0][bIdx_i + bIdx_j * modelWidth] > 1) {
 
-							BYTE valOut = m_DistImg[idx_i + idx_j * obsWidthStep] > VAR_THRESH_FG_DETERMINE * m_Var_Temp[0][bIdx_i + bIdx_j * modelWidth] ? 255 : 0;
+							BYTE valOut = m_DistImg.at<float>(idx_j, idx_i) > VAR_THRESH_FG_DETERMINE * m_Var_Temp[0][bIdx_i + bIdx_j * modelWidth] ? 255 : 0;
+                            res.push_back(valOut);
+							mask.at<uchar>(idx_j, idx_i) = valOut;
+		
 
-							pOut[idx_i + idx_j * obsWidthStep] = valOut;
 						}
 
 						obs_var[nMatchIdx] = MAX(obs_var[nMatchIdx], pixelDist);
 					}
 				}
-
 				for (int m = 0; m < NUM_MODELS; ++m) {
 
 					if (nElemCnt[m] > 0) {
@@ -580,9 +569,7 @@ class ProbModel {
 				}
 			}
 		}
-
-	}
-
+	 }
 };
 
 #endif				// _PROB_MODEL_H_

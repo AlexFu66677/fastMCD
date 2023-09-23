@@ -20,26 +20,26 @@
 // YOUR OWN RISK!
 
 #pragma once
+
 #include <opencv/cv.h>
 
 #define GRID_SIZE_W (32)
 #define GRID_SIZE_H (24)
+using namespace cv;
 
 typedef unsigned char BYTE;
 
 class KLTWrapper {
  private:
-	IplImage * eig;
-	IplImage *temp;
-	IplImage *maskimg;
-
-	// For LK
-	IplImage *image;
-	IplImage *imgPrevGray, *pyramid, *prev_pyramid, *swap_temp;
+	Mat image;
 	int win_size;
 	int MAX_COUNT;
-	CvPoint2D32f *points[2], *swap_points;
-	char *status;
+	int height;
+	int width;
+	std::vector<cv::Point2f> prev_pts;
+	std::vector<cv::Point2f> next_pts;
+	std::vector<uchar> status;
+    std::vector<float> err;
 	int count;
 	int flags;
 
@@ -47,15 +47,15 @@ class KLTWrapper {
 	double matH[9];
 
  private:
-	void SwapData(IplImage * imgGray);
-	void MakeHomoGraphy(int *pnMatch, int nCnt);
+	void SwapData(const Mat& imgGray);
+	void MakeHomoGraphy(std::vector<cv::Point2f>&prev_pts,std::vector<cv::Point2f>&next_pts);
 
  public:
 	 KLTWrapper(void);
 	~KLTWrapper(void);
 
-	void Init(IplImage * imgGray);
-	void InitFeatures(IplImage * imgGray);
-	void RunTrack(IplImage * imgGray, IplImage * prevGray);	// with MakeHomography
+	void Init(const Mat& imgGray);
+	void InitFeatures();
+	void RunTrack(const Mat& imgGray, const Mat& prevGray);	// with MakeHomography
 	void GetHomography(double *pmatH);
 };

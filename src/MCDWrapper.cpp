@@ -56,64 +56,53 @@ MCDWrapper::~MCDWrapper()
 }
 
 void
- MCDWrapper::Init(IplImage * in_imgIpl)
+ MCDWrapper::Init(const Mat& in_img)
 {
 
 	frm_cnt = 0;
-	imgIpl = in_imgIpl;
-
+	img = in_img;
 	// Allocate
-	imgIplTemp = cvCreateImage(cvSize(in_imgIpl->width, in_imgIpl->height), IPL_DEPTH_8U, 1);
-	imgGray = cvCreateImage(cvSize(in_imgIpl->width, in_imgIpl->height), IPL_DEPTH_8U, 1);
-	imgGrayPrev = cvCreateImage(cvSize(in_imgIpl->width, in_imgIpl->height), IPL_DEPTH_8U, 1);
-	imgGaussLarge = cvCreateImage(cvSize(in_imgIpl->width, in_imgIpl->height), IPL_DEPTH_8U, 1);
-	imgGaussSmall = cvCreateImage(cvSize(in_imgIpl->width, in_imgIpl->height), IPL_DEPTH_8U, 1);
-	imgDOG = cvCreateImage(cvSize(in_imgIpl->width, in_imgIpl->height), IPL_DEPTH_8U, 1);
-
-	detect_img = cvCreateImage(cvSize(in_imgIpl->width, in_imgIpl->height), IPL_DEPTH_8U, 1);
-
-	//TODO directly retrieve imgIpl (change to Mat later)
-
-	// Smoothing using median filter
-	cvCvtColor(imgIpl, imgIplTemp, CV_RGB2GRAY);
-	cvSmooth(imgIplTemp, imgGray, CV_MEDIAN, 5);
-
+	imgTemp= img.clone();
+	imgGray = Mat::zeros(img.rows, img.cols, CV_8UC1);
+	detect_img = Mat::zeros(img.rows,img.cols,  CV_8UC1);
+    cv::cvtColor(imgTemp, imgGray, CV_RGB2GRAY);
 	m_LucasKanade.Init(imgGray);
 	BGModel.init(imgGray);
-
-	cvCopy(imgGray, imgGrayPrev);
+	imgGrayPrev=imgGray.clone();
 }
 
-void MCDWrapper::Run()
+Mat MCDWrapper::Run(const Mat & input_img,int frame_num)
 {
 
 	frm_cnt++;
 
 	timeval tic, toc, tic_total, toc_total;
-	float rt_preProc;	// pre Processing time
 	float rt_motionComp;	// motion Compensation time
 	float rt_modelUpdate;	// model update time
 	float rt_total;		// Background Subtraction time
+	cv::cvtColor(input_img, imgGray, CV_RGB2GRAY);
 
-	//--TIME START
-	cvCvtColor(imgIpl, imgIplTemp, CV_RGB2GRAY);
-	gettimeofday(&tic, NULL);
-	// Smmothign using median filter
-	cvSmooth(imgIplTemp, imgGray, CV_MEDIAN, 5);
-
-	//--TIME END
-	gettimeofday(&toc, NULL);
-	rt_preProc = (float)(toc.tv_usec - tic.tv_usec) / 1000.0;
 
 	//--TIME START
 	gettimeofday(&tic, NULL);
 	// Calculate Backward homography
 	// Get H
 	double h[9];
-	m_LucasKanade.RunTrack(imgGray, 0);
+	m_LucasKanade.RunTrack(imgGray, imgGrayPrev);
 	m_LucasKanade.GetHomography(h);
-	BGModel.motionCompensate(h);
+	BGModel.motionCompensate(h,frame_num);
+    int modelWidth=88;
+    int modelHeight=72;
+	for(int i=0;i<modelWidth*modelHeight;i++)
+	{
+		m_Mean[i] = BGModel.m_Mean[0][i];
+		m_Var[i] = BGModel.m_Var[0][i];
+		m_Age[i] = BGModel.m_Age[0][i];
 
+		m_Mean_Temp[i] = BGModel.m_Mean_Temp[0][i];
+		m_Var_Temp[i] = BGModel.m_Var_Temp[0][i];
+		m_Age_Temp[i] = BGModel.m_Age_Temp[0][i];
+	}
 	//--TIME END
 	gettimeofday(&toc, NULL);
 	rt_motionComp = (float)(toc.tv_usec - tic.tv_usec) / 1000.0;
@@ -121,37 +110,40 @@ void MCDWrapper::Run()
 	//--TIME START
 	gettimeofday(&tic, NULL);
 	// Update BG Model and Detect
-	BGModel.update(detect_img);
+	Mat Temp= imgGray.clone();
+	BGModel.update(Temp);
+	for(int i=0;i<modelWidth*modelHeight;i++)
+	{
+		m_Mean1[i] = BGModel.m_Mean[0][i];
+		m_Var1[i] = BGModel.m_Var[0][i];
+		m_Age1[i] = BGModel.m_Age[0][i];
+
+		m_Mean_Temp1[i] = BGModel.m_Mean_Temp[0][i];
+		m_Var_Temp1[i] = BGModel.m_Var_Temp[0][i];
+		m_Age_Temp1[i] = BGModel.m_Age_Temp[0][i];
+	}
+	Res.clear();
+	for(int i=0;i<BGModel.res.size();i++)
+	{
+		Res.push_back(BGModel.res[i]);
+	}
 	//--TIME END
 	gettimeofday(&toc, NULL);
 	rt_modelUpdate = (float)(toc.tv_usec - tic.tv_usec) / 1000.0;
 
-	rt_total = rt_preProc + rt_motionComp + rt_modelUpdate;
+	rt_total = rt_motionComp + rt_modelUpdate;
 
-	// Debug display of individual maps
-	// cv::Mat mean = cv::Mat(BGModel.modelHeight, BGModel.modelWidth, CV_32F, BGModel.m_Mean[0]);
-	// cv::imshow("mean",mean/255.0);
-	// cv::Mat var = cv::Mat(BGModel.modelHeight, BGModel.modelWidth, CV_32F, BGModel.m_Var[0]);
-	// cv::imshow("var",var/255.0);
-	// cv::Mat age = cv::Mat(BGModel.modelHeight, BGModel.modelWidth, CV_32F, BGModel.m_Age[0]);
-	// cv::imshow("age",age/255.0);
 
-	//////////////////////////////////////////////////////////////////////////
 	// Debug Output
 	for (int i = 0; i < 100; ++i) {
 		printf("\b");
 	}
-	printf("PP: %.2f(ms)\tOF: %.2f(ms)\tBGM: %.2f(ms)\tTotal time: \t%.2f(ms)", MAX(0.0, rt_preProc), MAX(0.0, rt_motionComp), MAX(0.0, rt_modelUpdate), MAX(0.0, rt_total));
+	printf("OF: %.2f(ms)\tBGM: %.2f(ms)\tTotal time: \t%.2f(ms)", MAX(0.0, rt_motionComp), MAX(0.0, rt_modelUpdate), MAX(0.0, rt_total));
 
-	// Uncomment this block if you want to save runtime to txt
-	// if(rt_preProc >= 0 && rt_motionComp >= 0 && rt_modelUpdate >= 0 && rt_total >= 0){
-	//      FILE* fileRunTime = fopen("runtime.txt", "a");
-	//      fprintf(fileRunTime, "%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n", rt_preProc, rt_motionComp, rt_modelUpdate, 0.0, rt_total);
-	//      fclose(fileRunTime);
-	// }
 
-	cvCopy(imgGray, imgGrayPrev);
+	imgGrayPrev=imgGray.clone();
 	cvWaitKey(10);
+    return BGModel.mask;
 
 }
 

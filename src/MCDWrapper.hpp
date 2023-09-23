@@ -1,23 +1,3 @@
-// Copyright (c) 2016 Kwang Moo Yi.
-// All rights reserved.
-
-// This  software  is  strictly   for  non-commercial  use  only.  For
-// commercial       use,       please        contact       me       at
-// kwang.m<dot>yi<AT>gmail<dot>com.   Also,  when  used  for  academic
-// purposes, please cite  the paper "Detection of  Moving Objects with
-// Non-stationary Cameras in 5.8ms:  Bringing Motion Detection to Your
-// Mobile Device,"  Yi et  al, CVPRW 2013  Redistribution and  use for
-// non-commercial purposes  in source  and binary forms  are permitted
-// provided that  the above  copyright notice  and this  paragraph are
-// duplicated  in   all  such   forms  and  that   any  documentation,
-// advertising  materials,   and  other  materials  related   to  such
-// distribution and use acknowledge that the software was developed by
-// the  Perception and  Intelligence Lab,  Seoul National  University.
-// The name of the Perception  and Intelligence Lab and Seoul National
-// University may not  be used to endorse or  promote products derived
-// from this software without specific prior written permission.  THIS
-// SOFTWARE IS PROVIDED ``AS IS''  AND WITHOUT ANY WARRANTIES.  USE AT
-// YOUR OWN RISK!
 
 #ifndef	_MCDWRAPPER_H_
 #define	_MCDWRAPPER_H_
@@ -54,24 +34,41 @@ class MCDWrapper {
 
 	int frm_cnt;
 
-	IplImage *detect_img;
+	Mat detect_img;
 
 	/* Note that the variable names are legacy */
 	KLTWrapper m_LucasKanade;
-	IplImage *imgIpl;
-	IplImage *imgIplTemp;
-	IplImage *imgGray;
-	IplImage *imgGrayPrev;
+	Mat img;
+	Mat imgTemp;
+	Mat imgGray;
+	Mat imgGrayPrev;
 
-	IplImage *imgGaussLarge;
-	IplImage *imgGaussSmall;
-	IplImage *imgDOG;
+	Mat imgGaussLarge;
+	Mat imgGaussSmall;
+	Mat imgDOG;
 
-	IplImage *debugCopy;
-	IplImage *debugDisp;
+	Mat debugCopy;
+	Mat debugDisp;
 
 	ProbModel BGModel;
+    int modelWidth=88;
+    int modelHeight=72;
+	float *m_Mean= new float[modelWidth * modelHeight];
+	float *m_Var= new float[modelWidth * modelHeight];
+	float *m_Age= new float[modelWidth * modelHeight];
 
+	float *m_Mean_Temp= new float[modelWidth * modelHeight];
+	float *m_Var_Temp= new float[modelWidth * modelHeight];
+	float *m_Age_Temp= new float[modelWidth * modelHeight];
+
+	float *m_Mean1= new float[modelWidth * modelHeight];
+	float *m_Var1= new float[modelWidth * modelHeight];
+	float *m_Age1= new float[modelWidth * modelHeight];
+
+	float *m_Mean_Temp1= new float[modelWidth * modelHeight];
+	float *m_Var_Temp1= new float[modelWidth * modelHeight];
+	float *m_Age_Temp1= new float[modelWidth * modelHeight];
+    vector<char>Res;
 /************************************************************************/
 /*  Methods								                                */
 /************************************************************************/
@@ -80,8 +77,8 @@ class MCDWrapper {
 	 MCDWrapper();
 	~MCDWrapper();
 
-	void Init(IplImage * in_imgIpl);
-	void Run();
+	void Init(const Mat & in_imgIpl);
+	Mat Run(const Mat & in_imgIpl,int frame_num);
 
 };
 
