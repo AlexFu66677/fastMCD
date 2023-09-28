@@ -10,64 +10,51 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-    cv::VideoCapture vid_capture("/home/fjl/code/fastMCD/data/woman.mp4");
+    cv::VideoCapture vid_capture("/home/fjl/code/moving/fusebbox_SGM/python/data/car2.mp4");
     int fps = vid_capture.get(5);
     int frame_count = vid_capture.get(7);
 	int frame_width=vid_capture.get(3);	
     int frame_height=vid_capture.get(4);
 	MCDWrapper *mcdwrapper = new MCDWrapper();
-	IplImage *frame = 0, *frame_copy = 0, *vil_conv = 0, *raw_img = 0, *model_copy = 0, *model_img = 0;
-	IplImage *edge = 0;
 	int frame_num = 1;
 	bool bRun = true;
 	const char window_name[] = "OUTPUT";
 	cvNamedWindow(window_name, CV_WINDOW_AUTOSIZE);
 	Mat mask=Mat::zeros(frame_height, frame_width, CV_8UC1);
-
-	while (bRun == true && frame_num <= frame_count) {	// the main loop
-	int t=0;
-	int tt=0;
-
+	Mat thresh=Mat::zeros(frame_height, frame_width, CV_8UC1);
+	while (bRun == true && frame_num <= frame_count) {
         Mat frame;
         bool isSuccess = vid_capture.read(frame);
-	    Mat _frame =frame.clone();
-        IplImage imgTmp = _frame;
-		IplImage *IplBuffer=cvCloneImage(&imgTmp);
-
 	    Mat frame_copy_origin =frame.clone();
 	    Mat raw_img_origin =frame.clone();
-
+        std::vector<cv::Rect>res;
 		if (frame_num == 1) {
 			mcdwrapper->Init(raw_img_origin);
 
 		} else {
-			mask = mcdwrapper->Run(raw_img_origin,frame_num);
+			res = mcdwrapper->Run(raw_img_origin,frame_num);
 
 		}
-
-        if (!frame_copy) {
-			frame_copy = cvCreateImage(cvSize(IplBuffer->width, IplBuffer->height), IPL_DEPTH_8U, IplBuffer->nChannels);
-			raw_img = cvCreateImage(cvSize(IplBuffer->width, IplBuffer->height), IPL_DEPTH_8U, IplBuffer->nChannels);
-		}
-		if (IplBuffer->origin == IPL_ORIGIN_TL) {
-			cvCopy(IplBuffer, frame_copy, 0);
-			cvCopy(IplBuffer, raw_img, 0);
-		} else {
-			cvFlip(IplBuffer, frame_copy, 0);
-			cvFlip(IplBuffer, raw_img, 0);
-		}
-
-
-        int nCount = cv::countNonZero(mask);
+        // Mat kernel = getStructuringElement(MORPH_RECT, Size(5, 5));
+        // dilate(mask, thresh, kernel, Point(-1, -1), 1);
+        // erode(thresh, thresh, kernel, Point(-1, -1), 1);
+		// vector<vector<Point>> contours;
+        // vector<Vec4i> hierarchy;
+        // findContours(thresh.clone(), contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+        // for (size_t i = 0; i < contours.size(); i++) {
+        //     if (contourArea(contours[i]) < 40)
+        //         continue;
+        //     Rect rect = boundingRect(contours[i]);
+        //     rectangle(frame_copy_origin, rect.tl(), rect.br(), Scalar(0, 0, 255), 2);
+        // }
+		for (size_t i = 0; i < res.size(); i++) {
+            rectangle(frame_copy_origin, res[i].tl(), res[i].br(), Scalar(0, 0, 255), 2);
+        }
 		char bufbuf[1000];
-		sprintf(bufbuf, "/home/fjl/code/fastMCD/src/res2/frm%05d.png", frame_num);
-		imwrite(bufbuf,mask);
+		sprintf(bufbuf, "/home/fjl/code/fastMCD/src/res3/frm%05d.png", frame_num);
+		imwrite(bufbuf,frame_copy_origin);
 		++frame_num;
 
 	}
-	// cvReleaseImage(&raw_img);
-	// cvReleaseImage(&frame_copy);
-	// cvReleaseVideoWriter(&pVideoOut);
-
 	return 0;
 }

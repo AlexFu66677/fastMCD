@@ -144,23 +144,19 @@ class ProbModel {
 		m_ModelIdx = new int[modelWidth * modelHeight];
 
 		// update with homography I
-		double h[9];
-		h[0] = 1.0;
-		h[1] = 0.0;
-		h[2] = 0.0;
-		h[3] = 0.0;
-		h[4] = 1.0;
-		h[5] = 0.0;
-		h[6] = 0.0;
-		h[7] = 0.0;
-		h[8] = 1.0;
+		double h[16][9];
+	    for (int j = 0; j < 16; ++j) {
+		  for (int ii = 0; ii < 9; ++ii) {
+			h[j][ii] = ii % 3 == ii / 3 ? 1.0f : 0.0f;
+		 }
+	    }
 
 		motionCompensate(h,0);
 		update(pInputImg);
 
 	}
 
-	void motionCompensate(double h[9],int frame_num) {
+	void motionCompensate(double h[16][9],int frame_num) {
 
 		int curModelWidth = modelWidth;
 		int curModelHeight = modelHeight;
@@ -174,12 +170,113 @@ class ProbModel {
 				float W = 1.0;
 				X = BLOCK_SIZE * i + BLOCK_SIZE / 2.0;
 				Y = BLOCK_SIZE * j + BLOCK_SIZE / 2.0;
-
+				float newW = 0;
+				float newX = 0;
+				float newY = 0;
 				// transformed coordinates with h
-				float newW = h[6] * X + h[7] * Y + h[8];
-				float newX = (h[0] * X + h[1] * Y + h[2]) / newW;
-				float newY = (h[3] * X + h[4] * Y + h[5]) / newW;
+				if(X<obsWidth/4 && Y<obsHeight/4)
+				{
+				newW = h[0][6] * X + h[0][7] * Y + h[0][8];
+				newX = (h[0][0] * X + h[0][1] * Y + h[0][2]) / newW;
+				newY = (h[0][3] * X + h[0][4] * Y + h[0][5]) / newW;
+				}
+				else if(X<obsWidth/2&&X>=obsWidth/4&&Y<obsHeight/4)
+				{
+				newW = h[1][6] * X + h[1][7] * Y + h[1][8];
+				newX = (h[1][0] * X + h[1][1] * Y + h[1][2]) / newW;
+				newY = (h[1][3] * X + h[1][4] * Y + h[1][5]) / newW;
+				}
+				else if(X<obsWidth/4*3&&X>=obsWidth/2&&Y<obsHeight/4)
+				{
+				newW = h[2][6] * X + h[2][7] * Y + h[2][8];
+				newX = (h[2][0] * X + h[2][1] * Y + h[2][2]) / newW;
+				newY = (h[2][3] * X + h[2][4] * Y + h[2][5]) / newW;
+				}
+				else if(X<obsWidth&&X>=obsWidth/4*3&&Y<obsHeight/4)
+				{
+				newW = h[3][6] * X + h[3][7] * Y + h[3][8];
+				newX = (h[3][0] * X + h[3][1] * Y + h[3][2]) / newW;
+				newY = (h[3][3] * X + h[3][4] * Y + h[3][5]) / newW;
+				}
 
+				else if(X<obsWidth/4&&Y<obsHeight/2&&Y>=obsHeight/4)
+				{
+				newW = h[4][6] * X + h[4][7] * Y + h[4][8];
+				newX = (h[4][0] * X + h[4][1] * Y + h[4][2]) / newW;
+				newY = (h[4][3] * X + h[4][4] * Y + h[4][5]) / newW;
+				}
+				else if(X<obsWidth/2&&X>=obsWidth/4&&Y<obsHeight/2&&Y>=obsHeight/4)
+				{
+				newW = h[5][6] * X + h[5][7] * Y + h[5][8];
+				newX = (h[5][0] * X + h[5][1] * Y + h[5][2]) / newW;
+				newY = (h[5][3] * X + h[5][4] * Y + h[5][5]) / newW;
+				}
+				else if(X<obsWidth/4*3&&X>=obsWidth/2&&Y<obsHeight/2&&Y>=obsHeight/4)
+				{
+				newW = h[6][6] * X + h[6][7] * Y + h[6][8];
+				newX = (h[6][0] * X + h[6][1] * Y + h[6][2]) / newW;
+				newY = (h[6][3] * X + h[6][4] * Y + h[6][5]) / newW;
+				}
+				else if(X<obsWidth&&X>=obsWidth/4*3&&Y<obsHeight/2&&Y>=obsHeight/4)
+				{
+				newW = h[7][6] * X + h[7][7] * Y + h[7][8];
+				newX = (h[7][0] * X + h[7][1] * Y + h[7][2]) / newW;
+				newY = (h[7][3] * X + h[7][4] * Y + h[7][5]) / newW;
+				}
+				else if(X<obsWidth/4&&Y<obsHeight/4*3&&Y>=obsHeight/2)
+				{
+				newW = h[8][6] * X + h[8][7] * Y + h[8][8];
+				newX = (h[8][0] * X + h[8][1] * Y + h[8][2]) / newW;
+				newY = (h[8][3] * X + h[8][4] * Y + h[8][5]) / newW;
+				}
+				else if(X<obsWidth/2&&X>=obsWidth/4&&Y<obsHeight/4*3&&Y>=obsHeight/2)
+				{
+				newW = h[9][6] * X + h[9][7] * Y + h[9][8];
+				newX = (h[9][0] * X + h[9][1] * Y + h[9][2]) / newW;
+				newY = (h[9][3] * X + h[9][4] * Y + h[9][5]) / newW;
+				}
+				else if(X<obsWidth/4*3&&X>=obsWidth/2&&Y<obsHeight/4*3&&Y>=obsHeight/2)
+				{
+				newW = h[10][6] * X + h[10][7] * Y + h[10][8];
+				newX = (h[10][0] * X + h[10][1] * Y + h[10][2]) / newW;
+				newY = (h[10][3] * X + h[10][4] * Y + h[10][5]) / newW;
+				}
+				else if(X<obsWidth&&X>=obsWidth/4*3&&Y<obsHeight/4*3&&Y>=obsHeight/2)
+				{
+				newW = h[11][6] * X + h[11][7] * Y + h[11][8];
+				newX = (h[11][0] * X + h[11][1] * Y + h[11][2]) / newW;
+				newY = (h[11][3] * X + h[11][4] * Y + h[11][5]) / newW;
+				}
+				else if(X<obsWidth/4&&Y<obsHeight&&Y>=obsHeight/4*3)
+				{
+				newW = h[12][6] * X + h[12][7] * Y + h[12][8];
+				newX = (h[12][0] * X + h[12][1] * Y + h[12][2]) / newW;
+				newY = (h[12][3] * X + h[12][4] * Y + h[12][5]) / newW;
+				}
+				else if(X<obsWidth/2&&X>=obsWidth/4&&Y<obsHeight&&Y>=obsHeight/4*3)
+				{
+				newW = h[13][6] * X + h[13][7] * Y + h[13][8];
+				newX = (h[13][0] * X + h[13][1] * Y + h[13][2]) / newW;
+				newY = (h[13][3] * X + h[13][4] * Y + h[13][5]) / newW;
+				}
+				else if(X<obsWidth/4*3&&X>=obsWidth/2&&Y<obsHeight&&Y>=obsHeight/4*3)
+				{
+				newW = h[14][6] * X + h[14][7] * Y + h[14][8];
+				newX = (h[14][0] * X + h[14][1] * Y + h[14][2]) / newW;
+				newY = (h[14][3] * X + h[14][4] * Y + h[14][5]) / newW;
+				}
+				else if(X<obsWidth&&X>=obsWidth/4*3&&Y<obsHeight&&Y>=obsHeight/4*3)
+				{
+				newW = h[15][6] * X + h[15][7] * Y + h[15][8];
+				newX = (h[15][0] * X + h[15][1] * Y + h[15][2]) / newW;
+				newY = (h[15][3] * X + h[15][4] * Y + h[15][5]) / newW;
+				}
+				// float newW = h[6] * X + h[7] * Y + h[8];
+				// float newX = (h[0] * X + h[1] * Y + h[2]) / newW;
+				// float newY = (h[3] * X + h[4] * Y + h[5]) / newW;
+				// newW = h[15][6] * X + h[15][7] * Y + h[15][8];
+				// newX = (h[15][0] * X + h[15][1] * Y + h[15][2]) / newW;
+				// newY = (h[15][3] * X + h[15][4] * Y + h[15][5]) / newW;
 				// transformed i,j coordinates of old position
 				float newI = newX / BLOCK_SIZE;
 				float newJ = newY / BLOCK_SIZE;

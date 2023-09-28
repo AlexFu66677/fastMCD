@@ -21,7 +21,7 @@
 // Inlcludes for this wrapper
 #include "KLTWrapper.hpp"
 #include "prob_model.hpp"
-
+#include "tracker.hpp"
 using namespace std;
 using namespace cv;
 
@@ -51,24 +51,8 @@ class MCDWrapper {
 	Mat debugDisp;
 
 	ProbModel BGModel;
-    int modelWidth=88;
-    int modelHeight=72;
-	float *m_Mean= new float[modelWidth * modelHeight];
-	float *m_Var= new float[modelWidth * modelHeight];
-	float *m_Age= new float[modelWidth * modelHeight];
-
-	float *m_Mean_Temp= new float[modelWidth * modelHeight];
-	float *m_Var_Temp= new float[modelWidth * modelHeight];
-	float *m_Age_Temp= new float[modelWidth * modelHeight];
-
-	float *m_Mean1= new float[modelWidth * modelHeight];
-	float *m_Var1= new float[modelWidth * modelHeight];
-	float *m_Age1= new float[modelWidth * modelHeight];
-
-	float *m_Mean_Temp1= new float[modelWidth * modelHeight];
-	float *m_Var_Temp1= new float[modelWidth * modelHeight];
-	float *m_Age_Temp1= new float[modelWidth * modelHeight];
     vector<char>Res;
+	vector<Tracker> bgs_tracked_list;
 /************************************************************************/
 /*  Methods								                                */
 /************************************************************************/
@@ -78,7 +62,8 @@ class MCDWrapper {
 	~MCDWrapper();
 
 	void Init(const Mat & in_imgIpl);
-	Mat Run(const Mat & in_imgIpl,int frame_num);
+	cv::Point2f compensate(cv::Point2f,double (*h)[9]);
+	std::vector<cv::Rect> Run(const Mat & in_imgIpl,int frame_num);
 
 };
 

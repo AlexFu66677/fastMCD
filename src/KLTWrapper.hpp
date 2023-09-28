@@ -22,9 +22,8 @@
 #pragma once
 
 #include <opencv/cv.h>
-
-#define GRID_SIZE_W (32)
-#define GRID_SIZE_H (24)
+#define GRID_SIZE_W (64)
+#define GRID_SIZE_H (48)
 using namespace cv;
 
 typedef unsigned char BYTE;
@@ -44,7 +43,7 @@ class KLTWrapper {
 	int flags;
 
 	// For Homography Matrix
-	double matH[9];
+	double matH[16][9];
 
  private:
 	void SwapData(const Mat& imgGray);
@@ -57,5 +56,7 @@ class KLTWrapper {
 	void Init(const Mat& imgGray);
 	void InitFeatures();
 	void RunTrack(const Mat& imgGray, const Mat& prevGray);	// with MakeHomography
-	void GetHomography(double *pmatH);
+	void GetHomography(double (*h)[9]);
+	int get_region(cv::Point2f point, int image_width, int image_height);
+	std::vector<std::vector<std::vector<cv::Point2f>>> group_points(std::vector<cv::Point2f> good0,std::vector<cv::Point2f> good1);
 };
