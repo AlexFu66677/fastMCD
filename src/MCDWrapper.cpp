@@ -1,24 +1,3 @@
-// Copyright (c) 2016 Kwang Moo Yi.
-// All rights reserved.
-
-// This  software  is  strictly   for  non-commercial  use  only.  For
-// commercial       use,       please        contact       me       at
-// kwang.m<dot>yi<AT>gmail<dot>com.   Also,  when  used  for  academic
-// purposes, please cite  the paper "Detection of  Moving Objects with
-// Non-stationary Cameras in 5.8ms:  Bringing Motion Detection to Your
-// Mobile Device,"  Yi et  al, CVPRW 2013  Redistribution and  use for
-// non-commercial purposes  in source  and binary forms  are permitted
-// provided that  the above  copyright notice  and this  paragraph are
-// duplicated  in   all  such   forms  and  that   any  documentation,
-// advertising  materials,   and  other  materials  related   to  such
-// distribution and use acknowledge that the software was developed by
-// the  Perception and  Intelligence Lab,  Seoul National  University.
-// The name of the Perception  and Intelligence Lab and Seoul National
-// University may not  be used to endorse or  promote products derived
-// from this software without specific prior written permission.  THIS
-// SOFTWARE IS PROVIDED ``AS IS''  AND WITHOUT ANY WARRANTIES.  USE AT
-// YOUR OWN RISK!
-
 #ifndef	_MCDWRAPPER_CPP_
 #define	_MCDWRAPPER_CPP_
 
@@ -26,26 +5,6 @@
 #include <cstring>
 #include "MCDWrapper.hpp"
 #include "params.hpp"
-
-#if defined _WIN32 || defined _WIN64
-int gettimeofday(struct timeval *tp, int *tz)
-{
-	LARGE_INTEGER tickNow;
-	static LARGE_INTEGER tickFrequency;
-	static BOOL tickFrequencySet = FALSE;
-	if (tickFrequencySet == FALSE) {
-		QueryPerformanceFrequency(&tickFrequency);
-		tickFrequencySet = TRUE;
-	}
-	QueryPerformanceCounter(&tickNow);
-	tp->tv_sec = (long)(tickNow.QuadPart / tickFrequency.QuadPart);
-	tp->tv_usec = (long)(((tickNow.QuadPart % tickFrequency.QuadPart) * 1000000L) / tickFrequency.QuadPart);
-
-	return 0;
-}
-#else
-#include <sys/time.h>
-#endif
 
 MCDWrapper::MCDWrapper()
 {
@@ -61,7 +20,6 @@ void
 
 	frm_cnt = 0;
 	img = in_img;
-	// Allocate
 	imgTemp= img.clone();
 	imgGray = Mat::zeros(img.rows, img.cols, CV_8UC1);
 	detect_img = Mat::zeros(img.rows,img.cols,  CV_8UC1);
@@ -70,7 +28,7 @@ void
 	BGModel.init(imgGray);
 	imgGrayPrev=imgGray.clone();
 }
-cv::Point2f MCDWrapper::compensate(cv::Point2f point,double (*h)[9])
+cv::Point2f MCDWrapper::compensate(cv::Point2f point,double(*h)[9])
 {
 		       float newW = 0;
 		       float newX = 0;
@@ -183,56 +141,69 @@ std::vector<cv::Rect> MCDWrapper::Run(const Mat & input_img,int frame_num)
 {
 
 	frm_cnt++;
-
-	timeval tic, toc, tic_total, toc_total;
-	float rt_motionComp;	// motion Compensation time
-	float rt_modelUpdate;	// model update time
-	float rt_total;		// Background Subtraction time
 	cv::cvtColor(input_img, imgGray, CV_RGB2GRAY);
 
+    clock_t startTime1,endTime1;
+	clock_t startTime2,endTime2;
+	clock_t startTime3,endTime3;
+	clock_t startTime4,endTime4;
+	clock_t startTime5,endTime5;
 
-	//--TIME START
-	gettimeofday(&tic, NULL);
-	// Calculate Backward homography
-	// Get H
+
+	clock_t startRunTrack,endRunTrack;
+	clock_t startGetHomography,endGetHomography;
+	clock_t startGetmotionCompensate,endmotionCompensate;
+
+    /*************************
+	计算KLT 单应矩阵H 模型补偿
+    **************************/
+	startTime1 = clock();
+
 	double h[16][9];
+	startRunTrack=clock();
 	m_LucasKanade.RunTrack(imgGray, imgGrayPrev);
-	m_LucasKanade.GetHomography(h);
-	BGModel.motionCompensate(h,frame_num);
-	Mat H(3, 3, CV_32F);
-	//mat.create(3, 3, CV_32F);
-    memcpy(H.data,h, sizeof(float) * 9);
-    // int modelWidth=88;
-    // int modelHeight=72;
-	// for(int i=0;i<modelWidth*modelHeight;i++)
-	// {
-	// 	m_Mean[i] = BGModel.m_Mean[0][i];
-	// 	m_Var[i] = BGModel.m_Var[0][i];
-	// 	m_Age[i] = BGModel.m_Age[0][i];
-	// 	m_Mean_Temp[i] = BGModel.m_Mean_Temp[0][i];
-	// 	m_Var_Temp[i] = BGModel.m_Var_Temp[0][i];
-	// 	m_Age_Temp[i] = BGModel.m_Age_Temp[0][i];
-	// }
-	//--TIME END
-	gettimeofday(&toc, NULL);
-	rt_motionComp = (float)(toc.tv_usec - tic.tv_usec) / 1000.0;
+	endRunTrack=clock();
 
-	//--TIME START
-	gettimeofday(&tic, NULL);
-	// Update BG Model and Detect
+    startGetHomography=clock();
+	m_LucasKanade.GetHomography(h);
+    endGetHomography=clock();
+
+    startGetmotionCompensate=clock();
+	BGModel.motionCompensate(h,frame_num);
+    endmotionCompensate=clock();
+
+	double time1 =endRunTrack-startRunTrack;
+	double time2 =endGetHomography-startGetHomography;
+	double time3 =endmotionCompensate-startGetmotionCompensate;
+
+    std::cout<<"RunTrack:"<<time1/CLOCKS_PER_SEC<<" "<<"GetHomography:"<<time2/CLOCKS_PER_SEC<<" "<<"GetmotionCompensate:"<<time3/CLOCKS_PER_SEC<<std::endl;
+
+	Mat H(3, 3, CV_32F);
+    memcpy(H.data,h, sizeof(float) * 9);
+	endTime1 = clock();
+
+    /*************************
+	模型更新 前景提取
+    **************************/
+	startTime2 = clock();
 	Mat Temp= imgGray.clone();
 	BGModel.update(Temp);
+	endTime2 = clock();
 
-	Mat thresh=Mat::zeros(input_img.rows, input_img.cols, CV_8UC1);
-	Mat kernel = getStructuringElement(MORPH_RECT, Size(5, 5));
-    dilate(BGModel.mask, thresh, kernel, Point(-1, -1), 1);
-    erode(thresh, thresh, kernel, Point(-1, -1), 1);
+    /*************************
+	形态学处理并绘制初始框 
+    **************************/
+	startTime3 = clock();
 	vector<vector<Point>> contours;
     vector<Vec4i> hierarchy;
-	vector<Rect> background_res;
 	vector<Rect> bgs_tracked_res;
 	vector<Rect>bgs_tracked_list_point;
     vector<Rect>new_bgs_tracked_res;
+	thresh=Mat::zeros(input_img.rows, input_img.cols, CV_8UC1);
+	Mat kernel = getStructuringElement(MORPH_RECT, Size(5, 5));
+    dilate(BGModel.mask, thresh, kernel, Point(-1, -1), 1);
+    erode(thresh, thresh, kernel, Point(-1, -1), 1);
+    background_res.clear();
     findContours(thresh.clone(), contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
     for (size_t i = 0; i < contours.size(); i++) {
         if (contourArea(contours[i]) < 40)
@@ -240,9 +211,17 @@ std::vector<cv::Rect> MCDWrapper::Run(const Mat & input_img,int frame_num)
         Rect rect = boundingRect(contours[i]);
 		background_res.push_back(rect);
     }
+	endTime3 = clock();
+    
+    /************************************
+	tracker追踪 通过运动连续性对运动目标框进行筛选
+    *************************************/
+	startTime4 = clock();
+	//更新所有trackerbox状态
 	for (size_t i = 0; i < bgs_tracked_list.size(); i++) {
         bgs_tracked_list[i].update_status=false;
 	}
+	//初始化tracker list
     if (bgs_tracked_list.empty()) {
         for (size_t i = 0; i < contours.size(); i++) {
             if (contourArea(contours[i]) < 40)
@@ -251,17 +230,11 @@ std::vector<cv::Rect> MCDWrapper::Run(const Mat & input_img,int frame_num)
             Tracker tracker(bbox.x, bbox.y - 2, bbox.width, bbox.height + 2);
             bgs_tracked_list.push_back(tracker);
         }
-    }
-	
-	else{
-		for (size_t i = 0; i < background_res.size(); i++) {	
+    }else{
+	//更新tracker list中匹配框的坐标,将未匹配的加入list
+	for (size_t i = 0; i < background_res.size(); i++) {	
 			Rect box = background_res[i];
 			cv::Point2f new_point=compensate(cv::Point2f(box.x,box.y),h);
-
-			// float newW = h[6] * box.x + h[7] * box.y + h[8];
-			// float newX = (h[0] * box.x + h[1] * box.y + h[2]) / newW;
-			// float newY = (h[3] * box.x + h[4] * box.y + h[5]) / newW;
-			// Point2f new_point(newX, newY);
 			bool matched = false;
 			for (size_t j = 0; j < bgs_tracked_list.size(); j++) {
                 if (bgs_tracked_list[j].calculate_iou(Rect(new_point.x, new_point.y, box.width, box.height)) > 0.4) {
@@ -276,9 +249,9 @@ std::vector<cv::Rect> MCDWrapper::Run(const Mat & input_img,int frame_num)
                 bgs_tracked_list.push_back(tracker);
             }
 		}
-        // bgs_tracked_list.erase(remove_if(bgs_tracked_list.begin(), bgs_tracked_list.end(), [](const Tracker& obj) 
-		//                        { return obj.missCounter >= 1; }), bgs_tracked_list.end());
-    vector<Tracker>::iterator iter;
+
+	//删除tracker list中missCounter >= 3的box
+	vector<Tracker>::iterator iter;
     for (iter = bgs_tracked_list.begin(); iter!= bgs_tracked_list.end();)
     {
         if (iter->missCounter >= 3)
@@ -289,18 +262,21 @@ std::vector<cv::Rect> MCDWrapper::Run(const Mat & input_img,int frame_num)
             iter ++ ; 
 		}
     }
-		for (size_t i = 0; i < bgs_tracked_list.size(); i++) {
-            if (!bgs_tracked_list[i].update_status) {
-                bgs_tracked_list[i].missCounter++;
-                continue;
-            }
-            if (bgs_tracked_list[i].hitCounter > 2) {
-                bgs_tracked_res.push_back(bgs_tracked_list[i].box);
-            }
+
+	//更新tracker list中box的missCounter,hitCounter,将结果加入bgs_tracked_res
+	for (size_t i = 0; i < bgs_tracked_list.size(); i++) {
+        if (!bgs_tracked_list[i].update_status) {
+            bgs_tracked_list[i].missCounter++;
+            continue;
         }
+        if (bgs_tracked_list[i].hitCounter > 2) {
+            bgs_tracked_res.push_back(bgs_tracked_list[i].box);
+        }
+    }
 	}
 
-    std::vector<cv::Rect> unique_bgs_tracked_res;
+	//计算unique删除重复的box
+    unique_bgs_tracked_res.clear();
     for (size_t i = 0; i < bgs_tracked_res.size(); i++) {
         bool is_unique = true;
         for (size_t j = 0; j < unique_bgs_tracked_res.size(); j++) {
@@ -313,13 +289,16 @@ std::vector<cv::Rect> MCDWrapper::Run(const Mat & input_img,int frame_num)
             unique_bgs_tracked_res.push_back(bgs_tracked_res[i]);
         }
     }
+	endTime4 = clock();
+
+    /************************************
+	计算均方误差追踪 通过相似性对运动目标框进行筛选
+    *************************************/
+	startTime5 = clock();
 	new_bgs_tracked_res.clear();
 	for (size_t i = 0; i < unique_bgs_tracked_res.size(); i++) {	
 			Rect box = unique_bgs_tracked_res[i];
 			cv::Point2f new_point=compensate(cv::Point2f(box.x,box.y),h);
-			// float newW = h[6] * box.x + h[7] * box.y + h[8];
-			// float newX = (h[0] * box.x + h[1] * box.y + h[2]) / newW;
-			// float newY = (h[3] * box.x + h[4] * box.y + h[5]) / newW;
 			float newX = new_point.x;
 			float newY = new_point.y;
 			if (newX < 0) {
@@ -332,37 +311,51 @@ std::vector<cv::Rect> MCDWrapper::Run(const Mat & input_img,int frame_num)
                 newY = 0;
             }
             if (newY+box.height >= input_img.rows) {
-                newY = input_img.rows - box.width -1;
+                newY = input_img.rows - box.height -1;
             }
+			if(box.height>=input_img.rows || box.width>=input_img.cols)
+			{
+				continue;
+			}
 		    bgs_tracked_list_point.push_back(Rect(int(newX), int(newY), box.width, box.height));
-			Mat old_bbox = input_img(box);
-            Mat new_bbox = input_img(Rect(int(newX), int(newY), box.width, box.height));
+
+			Mat old_bbox = imgGray(box);
+            Mat new_bbox = imgGrayPrev(Rect(int(newX), int(newY), box.width, box.height));
+
 			if (old_bbox.rows != new_bbox.rows || old_bbox.cols != new_bbox.cols) {
                  continue;
             }else {
-                double rr = cv::norm(old_bbox, new_bbox, cv::NORM_L2SQR);
-                if (rr > 250.0) {
+			double mse=0;
+			for(int i=0;i<old_bbox.cols;i++)
+			{
+				for(int j=0;j<old_bbox.rows;j++)
+				{
+					uchar a=old_bbox.at<uchar>(j,i);
+					uchar b=new_bbox.at<uchar>(j,i);
+					double diff=a-b;
+					double rr=diff*diff;
+					mse+=rr;
+				}
+			}
+			mse=mse/(old_bbox.cols*old_bbox.rows);
+                if (mse > 250.0) {
                     new_bgs_tracked_res.push_back(box);
                 }
             }
 	}
-	gettimeofday(&toc, NULL);
-	rt_modelUpdate = (float)(toc.tv_usec - tic.tv_usec) / 1000.0;
-
-	rt_total = rt_motionComp + rt_modelUpdate;
-
-
-	// Debug Output
-	for (int i = 0; i < 100; ++i) {
-		printf("\b");
-	}
-	printf("OF: %.2f(ms)\tBGM: %.2f(ms)\tTotal time: \t%.2f(ms)", MAX(0.0, rt_motionComp), MAX(0.0, rt_modelUpdate), MAX(0.0, rt_total));
-
+	endTime5 = clock();
 
 	imgGrayPrev=imgGray.clone();
+	double t1 =endTime1-startTime1;
+	double t2 =endTime2-startTime2;
+	double t3 =endTime3-startTime3;
+	double t4 =endTime4-startTime4;
+	double t5 =endTime5-startTime5;
+    std::cout<<"KLT:"<<t1/CLOCKS_PER_SEC<<" "<<"BGM:"<<t2/CLOCKS_PER_SEC<<" "<<"TH:"<<t3/CLOCKS_PER_SEC<<" "<<"TRACKER:"<<t4/CLOCKS_PER_SEC<<" "<<"MSE:"<<t5/CLOCKS_PER_SEC<<std::endl;
+	std::cout<<"TOTAL:"<<t1/CLOCKS_PER_SEC+t2/CLOCKS_PER_SEC+t3/CLOCKS_PER_SEC+t4/CLOCKS_PER_SEC+t5/CLOCKS_PER_SEC<<std::endl;
+	
 	cvWaitKey(10);
-    // return BGModel.mask;
-	return  background_res;
+	return  new_bgs_tracked_res;
 
 }
 

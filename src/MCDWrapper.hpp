@@ -42,6 +42,7 @@ class MCDWrapper {
 	Mat imgTemp;
 	Mat imgGray;
 	Mat imgGrayPrev;
+    Mat thresh;
 
 	Mat imgGaussLarge;
 	Mat imgGaussSmall;
@@ -53,6 +54,8 @@ class MCDWrapper {
 	ProbModel BGModel;
     vector<char>Res;
 	vector<Tracker> bgs_tracked_list;
+	vector<Rect> background_res;
+	std::vector<cv::Rect> unique_bgs_tracked_res;
 /************************************************************************/
 /*  Methods								                                */
 /************************************************************************/
@@ -62,7 +65,7 @@ class MCDWrapper {
 	~MCDWrapper();
 
 	void Init(const Mat & in_imgIpl);
-	cv::Point2f compensate(cv::Point2f,double (*h)[9]);
+	cv::Point2f compensate(cv::Point2f,double(*h)[9]);
 	std::vector<cv::Rect> Run(const Mat & in_imgIpl,int frame_num);
 
 };

@@ -1,23 +1,3 @@
-// Copyright (c) 2016 Kwang Moo Yi.
-// All rights reserved.
-
-// This  software  is  strictly   for  non-commercial  use  only.  For
-// commercial       use,       please        contact       me       at
-// kwang.m<dot>yi<AT>gmail<dot>com.   Also,  when  used  for  academic
-// purposes, please cite  the paper "Detection of  Moving Objects with
-// Non-stationary Cameras in 5.8ms:  Bringing Motion Detection to Your
-// Mobile Device,"  Yi et  al, CVPRW 2013  Redistribution and  use for
-// non-commercial purposes  in source  and binary forms  are permitted
-// provided that  the above  copyright notice  and this  paragraph are
-// duplicated  in   all  such   forms  and  that   any  documentation,
-// advertising  materials,   and  other  materials  related   to  such
-// distribution and use acknowledge that the software was developed by
-// the  Perception and  Intelligence Lab,  Seoul National  University.
-// The name of the Perception  and Intelligence Lab and Seoul National
-// University may not  be used to endorse or  promote products derived
-// from this software without specific prior written permission.  THIS
-// SOFTWARE IS PROVIDED ``AS IS''  AND WITHOUT ANY WARRANTIES.  USE AT
-// YOUR OWN RISK!
 
 #ifndef _PROB_MODEL_H_
 #define _PROB_MODEL_H_
@@ -32,7 +12,7 @@
 #include	<algorithm>
 #include    <opencv2/imgproc.hpp>
 #include    <opencv/cv.h>
-
+#include    <ctime>
 /************************************************************************/
 /*  Necessary includes for this Algorithm                               */
 /************************************************************************/
@@ -164,8 +144,6 @@ class ProbModel {
 		// compensate models for the current view
 		for (int j = 0; j < curModelHeight; ++j) {
 			for (int i = 0; i < curModelWidth; ++i) {
-
-				// x and y coordinates for current model
 				float X, Y;
 				float W = 1.0;
 				X = BLOCK_SIZE * i + BLOCK_SIZE / 2.0;
@@ -173,6 +151,9 @@ class ProbModel {
 				float newW = 0;
 				float newX = 0;
 				float newY = 0;
+				// newW = X;
+				// newX = X;
+				// newY = X;
 				// transformed coordinates with h
 				if(X<obsWidth/4 && Y<obsHeight/4)
 				{
@@ -271,13 +252,16 @@ class ProbModel {
 				newX = (h[15][0] * X + h[15][1] * Y + h[15][2]) / newW;
 				newY = (h[15][3] * X + h[15][4] * Y + h[15][5]) / newW;
 				}
+
+
 				// float newW = h[6] * X + h[7] * Y + h[8];
 				// float newX = (h[0] * X + h[1] * Y + h[2]) / newW;
 				// float newY = (h[3] * X + h[4] * Y + h[5]) / newW;
 				// newW = h[15][6] * X + h[15][7] * Y + h[15][8];
 				// newX = (h[15][0] * X + h[15][1] * Y + h[15][2]) / newW;
 				// newY = (h[15][3] * X + h[15][4] * Y + h[15][5]) / newW;
-				// transformed i,j coordinates of old position
+
+
 				float newI = newX / BLOCK_SIZE;
 				float newJ = newY / BLOCK_SIZE;
 
@@ -387,7 +371,9 @@ class ProbModel {
 						if (idx_new_i >= 0 && idx_new_i < curModelWidth && idx_new_j >= 0 && idx_new_j < curModelHeight) {
 							int idxNew = idx_new_i + idx_new_j * modelWidth;
 							for (int m = 0; m < NUM_MODELS; ++m) {
-								temp_var[0][m] = w_H * (m_Var[m][idxNew] + VARIANCE_INTERPOLATE_PARAM * (pow(m_Mean_Temp[m][idxNow] - m_Mean[m][idxNew], (int)2)));
+								// temp_var[0][m] = w_H * (m_Var[m][idxNew] + VARIANCE_INTERPOLATE_PARAM * (pow(m_Mean_Temp[m][idxNow] - m_Mean[m][idxNew], (int)2)));
+								float tmp=m_Mean_Temp[m][idxNow] - m_Mean[m][idxNew];
+								temp_var[0][m] = w_H * (m_Var[m][idxNew] + VARIANCE_INTERPOLATE_PARAM * tmp * tmp);
 							}
 						}
 					}
@@ -399,7 +385,9 @@ class ProbModel {
 						if (idx_new_i >= 0 && idx_new_i < curModelWidth && idx_new_j >= 0 && idx_new_j < curModelHeight) {
 							int idxNew = idx_new_i + idx_new_j * modelWidth;
 							for (int m = 0; m < NUM_MODELS; ++m) {
-								temp_var[1][m] = w_V * (m_Var[m][idxNew] + VARIANCE_INTERPOLATE_PARAM * (pow(m_Mean_Temp[m][idxNow] - m_Mean[m][idxNew], (int)2)));
+								// temp_var[1][m] = w_V * (m_Var[m][idxNew] + VARIANCE_INTERPOLATE_PARAM * (pow(m_Mean_Temp[m][idxNow] - m_Mean[m][idxNew], (int)2)));
+								float tmp=m_Mean_Temp[m][idxNow] - m_Mean[m][idxNew];
+								temp_var[1][m] = w_V * (m_Var[m][idxNew] + VARIANCE_INTERPOLATE_PARAM * tmp * tmp);
 							}
 						}
 					}
@@ -412,7 +400,9 @@ class ProbModel {
 						if (idx_new_i >= 0 && idx_new_i < curModelWidth && idx_new_j >= 0 && idx_new_j < curModelHeight) {
 							int idxNew = idx_new_i + idx_new_j * modelWidth;
 							for (int m = 0; m < NUM_MODELS; ++m) {
-								temp_var[2][m] = w_HV * (m_Var[m][idxNew] + VARIANCE_INTERPOLATE_PARAM * (pow(m_Mean_Temp[m][idxNow] - m_Mean[m][idxNew], (int)2)));
+								// temp_var[2][m] = w_HV * (m_Var[m][idxNew] + VARIANCE_INTERPOLATE_PARAM * (pow(m_Mean_Temp[m][idxNow] - m_Mean[m][idxNew], (int)2)));
+								float tmp=m_Mean_Temp[m][idxNow] - m_Mean[m][idxNew];
+								temp_var[2][m] = w_HV * (m_Var[m][idxNew] + VARIANCE_INTERPOLATE_PARAM * tmp * tmp);
 							}
 						}
 					}
@@ -421,7 +411,8 @@ class ProbModel {
 					if (idxNewI >= 0 && idxNewI < curModelWidth && idxNewJ >= 0 && idxNewJ < curModelHeight) {
 						int idxNew = idxNewI + idxNewJ * modelWidth;
 						for (int m = 0; m < NUM_MODELS; ++m) {
-							temp_var[3][m] = w_self * (m_Var[m][idxNew] + VARIANCE_INTERPOLATE_PARAM * (pow(m_Mean_Temp[m][idxNow] - m_Mean[m][idxNew], (int)2)));
+							// temp_var[3][m] = w_self * (m_Var[m][idxNew] + VARIANCE_INTERPOLATE_PARAM * (pow(m_Mean_Temp[m][idxNow] - m_Mean[m][idxNew], (int)2)));
+							temp_var[3][m] = w_self * (m_Var[m][idxNew] + VARIANCE_INTERPOLATE_PARAM * (m_Mean_Temp[m][idxNow] - m_Mean[m][idxNew])*(m_Mean_Temp[m][idxNow] - m_Mean[m][idxNew]));
 						}
 					}
 
@@ -442,11 +433,6 @@ class ProbModel {
 					m_Var_Temp[m][i + j * modelWidth] = MAX(m_Var_Temp[m][i + j * modelWidth], MIN_BG_VAR);
 				}
 				if (idxNewI < 1 || idxNewI >= modelWidth - 1 || idxNewJ < 1 || idxNewJ >= modelHeight - 1) {
-				// if(frame_num==446 && i + j * modelWidth==2301)
-				// {
-				// 	std::cout<<1;
-				// }
-				// if (idxNewI < 1 || idxNewJ < 1) {
 					for (int m = 0; m < NUM_MODELS; ++m) {
 						m_Var_Temp[m][i + j * modelWidth] = INIT_BG_VAR;
 						m_Age_Temp[m][i + j * modelWidth] = 0;
@@ -463,15 +449,15 @@ class ProbModel {
 	}
 
 	void update(const Mat& pOutputImg) {
+		clock_t t1,t2,t3,t4,t5,t6;
 		// cv::cvtColor(pOutputImg, pOutputImg, cv::COLOR_BGR2GRAY);
 		int curModelWidth = modelWidth;
 		int curModelHeight = modelHeight;
-		res.clear();
 		mask = Mat::zeros(obsHeight, obsWidth, CV_8UC1);
 		//////////////////////////////////////////////////////////////////////////
 		// Find Matching Model
 		memset(m_ModelIdx, 0, sizeof(int) * modelHeight * modelWidth);
-
+        t1=clock();
 		for (int bIdx_j = 0; bIdx_j < curModelHeight; bIdx_j++) {
 			for (int bIdx_i = 0; bIdx_i < curModelWidth; bIdx_i++) {
 
@@ -524,11 +510,11 @@ class ProbModel {
 				// Select Model 
 				// Check Match against 0
 
-				if (pow(cur_mean - m_Mean_Temp[0][bIdx_i + bIdx_j * modelWidth], (int)2) < VAR_THRESH_MODEL_MATCH * m_Var_Temp[0][bIdx_i + bIdx_j * modelWidth]) {
+				if ((cur_mean - m_Mean_Temp[0][bIdx_i + bIdx_j * modelWidth])*(cur_mean - m_Mean_Temp[0][bIdx_i + bIdx_j * modelWidth]) < VAR_THRESH_MODEL_MATCH * m_Var_Temp[0][bIdx_i + bIdx_j * modelWidth]) {
 					m_ModelIdx[bIdx_i + bIdx_j * modelWidth] = 0;
 				}
 				// Check Match against 1
-				else if (pow(cur_mean - m_Mean_Temp[1][bIdx_i + bIdx_j * modelWidth], (int)2) < VAR_THRESH_MODEL_MATCH * m_Var_Temp[1][bIdx_i + bIdx_j * modelWidth]) {
+				else if ((cur_mean - m_Mean_Temp[1][bIdx_i + bIdx_j * modelWidth])*(cur_mean - m_Mean_Temp[1][bIdx_i + bIdx_j * modelWidth])< VAR_THRESH_MODEL_MATCH * m_Var_Temp[1][bIdx_i + bIdx_j * modelWidth]) {
 					m_ModelIdx[bIdx_i + bIdx_j * modelWidth] = 1;
 				}
 				// If No match, set 1 age to zero and match = 1
@@ -539,11 +525,11 @@ class ProbModel {
 
 			}
 		}		// loop for models
-
+        t2=clock();
 		// update with current observation
 		float obs_mean[NUM_MODELS];
 		float obs_var[NUM_MODELS];
-
+        t3=clock();
 		for (int bIdx_j = 0; bIdx_j < curModelHeight; bIdx_j++) {
 			for (int bIdx_i = 0; bIdx_i < curModelWidth; bIdx_i++) {
 
@@ -593,16 +579,19 @@ class ProbModel {
 				}
 			}
 		}
-
+        t4=clock();
+		
+		t5=clock();
 		for (int bIdx_j = 0; bIdx_j < curModelHeight; bIdx_j++) {
 			for (int bIdx_i = 0; bIdx_i < curModelWidth; bIdx_i++) {
 				// TODO: OPTIMIZE THIS PART SO THAT WE DO NOT CALCULATE THIS (LUT)
 				// base (i,j) for this block
 				int idx_base_i;
 				int idx_base_j;
-				idx_base_i = ((float)bIdx_i) * BLOCK_SIZE;
-				idx_base_j = ((float)bIdx_j) * BLOCK_SIZE;
-
+				// idx_base_i = ((float)bIdx_i) * BLOCK_SIZE;
+				// idx_base_j = ((float)bIdx_j) * BLOCK_SIZE;
+				idx_base_i = bIdx_i * BLOCK_SIZE;
+				idx_base_j = bIdx_j * BLOCK_SIZE;
 				int nMatchIdx = m_ModelIdx[bIdx_i + bIdx_j * modelWidth];
 
 				// obtain observation variance
@@ -622,16 +611,15 @@ class ProbModel {
 
 						float pixelDist = 0.0;
 						float fDiff = pOutputImg.at<uchar>(idx_j, idx_i)- m_Mean[nMatchIdx][bIdx_i + bIdx_j * modelWidth];
-						pixelDist += pow(fDiff, (int)2);
-
-						m_DistImg.at<float>(idx_j, idx_i) = pow(pOutputImg.at<uchar>(idx_j, idx_i) - m_Mean[0][bIdx_i + bIdx_j * modelWidth], (int)2);
-						
-						// float a= m_DistImg.at<uchar>(idx_j, idx_i)
+						// pixelDist += pow(fDiff, (int)2);
+                        pixelDist += fDiff * fDiff;
+						// m_DistImg.at<float>(idx_j, idx_i) = pow(pOutputImg.at<uchar>(idx_j, idx_i) - m_Mean[0][bIdx_i + bIdx_j * modelWidth], (int)2);
+						float diff=pOutputImg.at<uchar>(idx_j, idx_i) - m_Mean[0][bIdx_i + bIdx_j * modelWidth];
+                        m_DistImg.at<float>(idx_j, idx_i) = diff*diff;
 
 						if (m_Age_Temp[0][bIdx_i + bIdx_j * modelWidth] > 1) {
 
 							BYTE valOut = m_DistImg.at<float>(idx_j, idx_i) > VAR_THRESH_FG_DETERMINE * m_Var_Temp[0][bIdx_i + bIdx_j * modelWidth] ? 255 : 0;
-                            res.push_back(valOut);
 							mask.at<uchar>(idx_j, idx_i) = valOut;
 		
 
@@ -640,32 +628,33 @@ class ProbModel {
 						obs_var[nMatchIdx] = MAX(obs_var[nMatchIdx], pixelDist);
 					}
 				}
-				for (int m = 0; m < NUM_MODELS; ++m) {
 
+				for (int m = 0; m < NUM_MODELS; ++m) {
 					if (nElemCnt[m] > 0) {
 						float age = m_Age_Temp[m][bIdx_i + bIdx_j * modelWidth];
 						float alpha = age / (age + 1.0);
-
-						// update with this variance
 						if (age == 0) {
 							m_Var[m][bIdx_i + bIdx_j * modelWidth] = MAX(obs_var[m], INIT_BG_VAR);
 						} else {
-							float alpha_var = alpha;	//MIN(alpha, 1.0 - MIN_NEW_VAR_OBS_PORTION);
+							float alpha_var = alpha;	
 							m_Var[m][bIdx_i + bIdx_j * modelWidth] = alpha_var * m_Var_Temp[m][bIdx_i + bIdx_j * modelWidth] + (1.0 - alpha_var) * obs_var[m];
 							m_Var[m][bIdx_i + bIdx_j * modelWidth] = MAX(m_Var[m][bIdx_i + bIdx_j * modelWidth], MIN_BG_VAR);
 						}
-
-						// Update Age
 						m_Age[m][bIdx_i + bIdx_j * modelWidth] = m_Age_Temp[m][bIdx_i + bIdx_j * modelWidth] + 1.0;
 						m_Age[m][bIdx_i + bIdx_j * modelWidth] = MIN(m_Age[m][bIdx_i + bIdx_j * modelWidth], MAX_BG_AGE);
 					} else {
 						m_Var[m][bIdx_i + bIdx_j * modelWidth] = m_Var_Temp[m][bIdx_i + bIdx_j * modelWidth];
 						m_Age[m][bIdx_i + bIdx_j * modelWidth] = m_Age_Temp[m][bIdx_i + bIdx_j * modelWidth];
 					}
-
 				}
+
 			}
 		}
+	    t6=clock();
+		double run1=t2-t1;
+		double run2=t4-t3;
+		double run3=t6-t5;
+		std::cout<<"Run1:"<<run1/CLOCKS_PER_SEC<<" "<<"Run2:"<<run2/CLOCKS_PER_SEC<<" "<<"Run3:"<<run3/CLOCKS_PER_SEC<<std::endl;
 	 }
 };
 
