@@ -138,12 +138,7 @@ cv::Point2f MCDWrapper::compensate(cv::Point2f point,double(*h)[9])
 				return cv::Point2f(newX,newY);
 }
 std::vector<cv::Rect> MCDWrapper::Run(const Mat & input_img,int frame_num)
-{
-
-	frm_cnt++;
-	cv::cvtColor(input_img, imgGray, CV_RGB2GRAY);
-
-    clock_t startTime1,endTime1;
+{   clock_t startTime1,endTime1;
 	clock_t startTime2,endTime2;
 	clock_t startTime3,endTime3;
 	clock_t startTime4,endTime4;
@@ -153,12 +148,12 @@ std::vector<cv::Rect> MCDWrapper::Run(const Mat & input_img,int frame_num)
 	clock_t startRunTrack,endRunTrack;
 	clock_t startGetHomography,endGetHomography;
 	clock_t startGetmotionCompensate,endmotionCompensate;
-
-    /*************************
+	/*************************
 	计算KLT 单应矩阵H 模型补偿
     **************************/
 	startTime1 = clock();
-
+	frm_cnt++;
+	cv::cvtColor(input_img, imgGray, CV_RGB2GRAY);
 	double h[16][9];
 	startRunTrack=clock();
 	m_LucasKanade.RunTrack(imgGray, imgGrayPrev);
@@ -353,8 +348,6 @@ std::vector<cv::Rect> MCDWrapper::Run(const Mat & input_img,int frame_num)
 	double t5 =endTime5-startTime5;
     std::cout<<"KLT:"<<t1/CLOCKS_PER_SEC<<" "<<"BGM:"<<t2/CLOCKS_PER_SEC<<" "<<"TH:"<<t3/CLOCKS_PER_SEC<<" "<<"TRACKER:"<<t4/CLOCKS_PER_SEC<<" "<<"MSE:"<<t5/CLOCKS_PER_SEC<<std::endl;
 	std::cout<<"TOTAL:"<<t1/CLOCKS_PER_SEC+t2/CLOCKS_PER_SEC+t3/CLOCKS_PER_SEC+t4/CLOCKS_PER_SEC+t5/CLOCKS_PER_SEC<<std::endl;
-	
-	cvWaitKey(10);
 	return  new_bgs_tracked_res;
 
 }

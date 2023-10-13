@@ -84,7 +84,8 @@ void KLTWrapper::RunTrack(const Mat& imgGray, const Mat& prevGray)
 		prevGray.copyTo(OCLprevGray); 
         imgGray.copyTo(OCLimgGray); 
 		UMat umatNextPts, umatStatus, umatErr;
-		cv::calcOpticalFlowPyrLK(OCLprevGray, OCLimgGray, prev_pts, umatNextPts, umatStatus, umatErr);
+		cv::calcOpticalFlowPyrLK(OCLprevGray, OCLimgGray, prev_pts, umatNextPts, umatStatus, umatErr, Size(8,8),1
+		,cv::TermCriteria((TermCriteria::COUNT) | (TermCriteria::EPS), 20, (0.03)),0);
 		// std::vector<cv::Point2f> Next_pts;
 	    // std::vector<uchar> Status;
         // std::vector<float> Err;
@@ -97,7 +98,7 @@ void KLTWrapper::RunTrack(const Mat& imgGray, const Mat& prevGray)
         umatStatus.reshape(1, 1).copyTo(status);
         umatErr.reshape(1, 1).copyTo(err);
 
-		// cv::calcOpticalFlowPyrLK(prevGray, imgGray, prev_pts, next_pts, status, err, Size(5,5),3
+		// cv::calcOpticalFlowPyrLK(prevGray, imgGray, prev_pts, next_pts, status, err, Size(10,10),3
 		// ,cv::TermCriteria((TermCriteria::COUNT) | (TermCriteria::EPS), 20, (0.03)),0);
 		end=clock();
 	    double rt = end - star;

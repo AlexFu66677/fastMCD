@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 	cvNamedWindow(window_name, CV_WINDOW_AUTOSIZE);
 	Mat mask=Mat::zeros(frame_height, frame_width, CV_8UC1);
 	Mat thresh=Mat::zeros(frame_height, frame_width, CV_8UC1);
-    clock_t startTime,endTime;
+    clock_t startTime,endTime,perstar,perend;
 	startTime = clock();
 	while (bRun == true && frame_num <= frame_count) {
         Mat frame;
@@ -34,7 +34,11 @@ int main(int argc, char *argv[])
 			mcdwrapper->Init(raw_img_origin);
 
 		} else {
+			perstar=clock();
 			res = mcdwrapper->Run(raw_img_origin,frame_num);
+			perend=clock();
+			double pertime = perend - perstar;
+	        std::cout<<pertime/CLOCKS_PER_SEC<<endl;
 		}
 		// for (size_t i = 0; i < mcdwrapper->background_res.size(); i++) {
         //     rectangle(frame_copy_origin, mcdwrapper->background_res[i].tl(), mcdwrapper->background_res[i].br(), Scalar(255, 0, 0), 2);
@@ -46,15 +50,16 @@ int main(int argc, char *argv[])
             rectangle(frame_copy_origin, res[i].tl(), res[i].br(), Scalar(0, 255, 0), 2);
         }
 		// char bufbuf[1000];
-		// sprintf(bufbuf, "/home/fjl/code/fastMCD/src/res8/frm%05d.png", frame_num);
+		// sprintf(bufbuf, "/home/fjl/code/fastMCD/src/res10/frm%05d.png", frame_num);
 		// imwrite(bufbuf,frame_copy_origin);
-	    imshow("OUT",frame_copy_origin);
-
+	    // imshow("OUT",frame_copy_origin);
+		// cvWaitKey(10);
 		++frame_num;
 
 	}
 	endTime = clock();
     double rt_motionComp = endTime - startTime;
 	std::cout<<rt_motionComp/CLOCKS_PER_SEC<<endl;
+
 	return 0;
 }
