@@ -18,41 +18,36 @@ int main(int argc, char *argv[])
 	MCDWrapper *mcdwrapper = new MCDWrapper();
 	int frame_num = 1;
 	bool bRun = true;
-	const char window_name[] = "OUTPUT";
-	cvNamedWindow(window_name, CV_WINDOW_AUTOSIZE);
-	Mat mask=Mat::zeros(frame_height, frame_width, CV_8UC1);
-	Mat thresh=Mat::zeros(frame_height, frame_width, CV_8UC1);
-    clock_t startTime,endTime,perstar,perend;
+    clock_t startTime,endTime,perstar,perend,t1,t2;
 	startTime = clock();
 	while (bRun == true && frame_num <= frame_count) {
-        Mat frame;
+		perstar=clock();
+		t1=clock();
+        UMat frame;
         bool isSuccess = vid_capture.read(frame);
-	    Mat frame_copy_origin =frame.clone();
-	    Mat raw_img_origin =frame.clone();
+	    UMat raw_img_origin; 
+		cv::cvtColor(frame, raw_img_origin, CV_RGB2GRAY);
         std::vector<cv::Rect>res;
+        t2=clock();
+
 		if (frame_num == 1) {
 			mcdwrapper->Init(raw_img_origin);
 
 		} else {
-			perstar=clock();
-			res = mcdwrapper->Run(raw_img_origin,frame_num);
-			perend=clock();
-			double pertime = perend - perstar;
-	        std::cout<<pertime/CLOCKS_PER_SEC<<endl;
+			res = mcdwrapper->Run(raw_img_origin);
 		}
-		// for (size_t i = 0; i < mcdwrapper->background_res.size(); i++) {
-        //     rectangle(frame_copy_origin, mcdwrapper->background_res[i].tl(), mcdwrapper->background_res[i].br(), Scalar(255, 0, 0), 2);
-        // }
-		// for (size_t i = 0; i < mcdwrapper->unique_bgs_tracked_res.size(); i++) {
-        //     rectangle(frame_copy_origin, mcdwrapper->unique_bgs_tracked_res[i].tl(), mcdwrapper->unique_bgs_tracked_res[i].br(), Scalar(0, 0, 255), 2);
-        // }
 		for (size_t i = 0; i < res.size(); i++) {
-            rectangle(frame_copy_origin, res[i].tl(), res[i].br(), Scalar(0, 255, 0), 2);
+            rectangle(frame, res[i].tl(), res[i].br(), Scalar(0, 255, 0), 2);
         }
+		perend=clock();
+		double pertime = perend - perstar;
+		double t=t2-t1;
+	    std::cout<<"alltime:"<<pertime/CLOCKS_PER_SEC<<endl;
+        std::cout<<"read:"<<t/CLOCKS_PER_SEC<<endl;
 		// char bufbuf[1000];
-		// sprintf(bufbuf, "/home/fjl/code/fastMCD/src/res10/frm%05d.png", frame_num);
-		// imwrite(bufbuf,frame_copy_origin);
-	    // imshow("OUT",frame_copy_origin);
+		// sprintf(bufbuf, "/home/fjl/code/fast/fastMCD-new/data/res4/frm%05d.png", frame_num);
+		// imwrite(bufbuf,frame);
+	    // imshow("OUT",frame);
 		// cvWaitKey(10);
 		++frame_num;
 

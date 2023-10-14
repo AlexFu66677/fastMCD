@@ -22,21 +22,20 @@ class KLTWrapper {
 	int count;
 	int flags;
 
-	// For Homography Matrix
 	double matH[16][9];
 
  private:
-	void SwapData(const Mat& imgGray);
+
 	void MakeHomoGraphy(std::vector<cv::Point2f>&prev_pts,std::vector<cv::Point2f>&next_pts);
 
  public:
 	 KLTWrapper(void);
 	~KLTWrapper(void);
 
-	void Init(const Mat& imgGray);
+	void Init(int image_width, int image_height);
 	void InitFeatures();
-	void RunTrack(const Mat& imgGray, const Mat& prevGray);	// with MakeHomography
+	void RunTrack(const UMat& imgGray, const UMat& prevGray);	// with MakeHomography
 	void GetHomography(double (*h)[9]);
-	int get_region(cv::Point2f point, int image_width, int image_height);
+	int get_region(cv::Point2f point);
 	std::vector<std::vector<std::vector<cv::Point2f>>> group_points(std::vector<cv::Point2f> good0,std::vector<cv::Point2f> good1);
 };

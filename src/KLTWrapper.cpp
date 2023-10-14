@@ -13,17 +13,16 @@ using namespace std;
 
 KLTWrapper::KLTWrapper(void)
 {
-	win_size = 10;
 }
 
 KLTWrapper::~KLTWrapper(void)
 {
 }
 
-void KLTWrapper::Init(const Mat& imgGray)
+void KLTWrapper::Init( int image_width, int image_height)
 {
-	width = imgGray.cols;
-	height = imgGray.rows;
+	width = image_width;
+	height = image_height;
 	flags=0;
 	for (int j = 0; j < 16; ++j) {
 		for (int ii = 0; ii < 9; ++ii) {
@@ -32,11 +31,11 @@ void KLTWrapper::Init(const Mat& imgGray)
 	}
 }
 
-int KLTWrapper::get_region(cv::Point2f point, int image_width, int image_height) {
+int KLTWrapper::get_region(cv::Point2f point) {
     int x = point.x;
     int y = point.y;
-    int region_width = image_width / 4;
-    int region_height = image_height / 4;
+    int region_width = width / 4;
+    int region_height = height / 4;
     int row = y / region_height;
     int col = x / region_width;
     return row * 4 + col;
@@ -46,7 +45,7 @@ vector<vector<vector<Point2f>>> KLTWrapper::group_points(vector<Point2f> good0,v
     vector<vector<vector<Point2f>>> points_groups(2, vector<vector<Point2f>>(16));
     for(size_t i=0;i<good0.size();i++)
 	{
-		int region = int(get_region(good1[i], 1920, 1080));
+		int region = int(get_region(good1[i]));
 		points_groups[0][region].push_back(good0[i]);
         points_groups[1][region].push_back(good1[i]);
     }
@@ -65,13 +64,13 @@ void KLTWrapper::InitFeatures()
 
 	int cnt = 0;
 	for (int i = 0; i < count; ++i) {
-			prev_pts.push_back(cv::Point2f(float(i)/(int(nj / GRID_SIZE_H)-1)* GRID_SIZE_W + GRID_SIZE_W / 2,i%(int(nj / GRID_SIZE_H)-1)* GRID_SIZE_H + GRID_SIZE_H / 2));
+		prev_pts.push_back(cv::Point2f(float(i)/(int(nj / GRID_SIZE_H)-1)* GRID_SIZE_W + GRID_SIZE_W / 2,i%(int(nj / GRID_SIZE_H)-1)* GRID_SIZE_H + GRID_SIZE_H / 2));
 	}
 }
 
-void KLTWrapper::RunTrack(const Mat& imgGray, const Mat& prevGray)
+void KLTWrapper::RunTrack(const UMat& imgGray, const UMat& prevGray)
 {
-	clock_t star,end;
+	clock_t star,end,t1,t2,t3,t4,t5,t6;
 
 	int nMatch[MAX_COUNT];
 	std::vector<cv::Point2f> good0;
@@ -80,40 +79,27 @@ void KLTWrapper::RunTrack(const Mat& imgGray, const Mat& prevGray)
 	good1.clear();
 	if (count > 0) {
 		star=clock();
-		cv::UMat OCLprevGray, OCLimgGray;
-		prevGray.copyTo(OCLprevGray); 
-        imgGray.copyTo(OCLimgGray); 
 		UMat umatNextPts, umatStatus, umatErr;
-		cv::calcOpticalFlowPyrLK(OCLprevGray, OCLimgGray, prev_pts, umatNextPts, umatStatus, umatErr, Size(8,8),1
+		cv::calcOpticalFlowPyrLK(prevGray, imgGray, prev_pts, umatNextPts, umatStatus, umatErr, Size(8,8),1
 		,cv::TermCriteria((TermCriteria::COUNT) | (TermCriteria::EPS), 20, (0.03)),0);
-		// std::vector<cv::Point2f> Next_pts;
-	    // std::vector<uchar> Status;
-        // std::vector<float> Err;
-
-		// umatNextPts.reshape(2, 1).copyTo(Next_pts);
-        // umatStatus.reshape(1, 1).copyTo(Status);
-        // umatErr.reshape(1, 1).copyTo(Err);
-
 		umatNextPts.reshape(2, 1).copyTo(next_pts);
         umatStatus.reshape(1, 1).copyTo(status);
         umatErr.reshape(1, 1).copyTo(err);
+        end=clock();
 
-		// cv::calcOpticalFlowPyrLK(prevGray, imgGray, prev_pts, next_pts, status, err, Size(10,10),3
-		// ,cv::TermCriteria((TermCriteria::COUNT) | (TermCriteria::EPS), 20, (0.03)),0);
-		end=clock();
-	    double rt = end - star;
-		std::cout<<"calcOpticalFlowPyrLK:"<<rt/CLOCKS_PER_SEC<<std::endl;
+		t1=clock();
 		for (int i = 0; i < prev_pts.size(); i++) {
 			if (!status[i]||next_pts[i].x<0||next_pts[i].y<0||next_pts[i].x > width || next_pts[i].y>height) {
 				continue;
 			}
 			good0.push_back(prev_pts[i]);
             good1.push_back(next_pts[i]);
-			// good1.push_back(prev_pts[i]);
 		}
+		t2=clock();
 	}
-
+    t3=clock();
 	if (count >= 10) {
+
 		MakeHomoGraphy(good0, good1);
 	} else {
 		for (int j = 0; j < 16; ++j) {
@@ -122,8 +108,16 @@ void KLTWrapper::RunTrack(const Mat& imgGray, const Mat& prevGray)
 		}
 		}
 	}
-    InitFeatures();
+	t4=clock();
 
+	t5=clock();
+    InitFeatures();
+	t6=clock();
+// double ti=end-star;	
+// double t=t2-t1;
+// double tt=t4-t3;
+// double ttt=t6-t5;
+// std::cout<<"calcop:"<<ti/CLOCKS_PER_SEC<<" "<<"sec_point:"<<t/CLOCKS_PER_SEC<<" "<<"MakeHomoGraphy:"<<tt/CLOCKS_PER_SEC<<" "<<"InitFeatures:"<<ttt/CLOCKS_PER_SEC<<std::endl;
 }
 
 void KLTWrapper::GetHomography(double (*h)[9])

@@ -15,17 +15,14 @@ MCDWrapper::~MCDWrapper()
 }
 
 void
- MCDWrapper::Init(const Mat& in_img)
+ MCDWrapper::Init(const UMat& imgGray)
 {
 
 	frm_cnt = 0;
-	img = in_img;
-	imgTemp= img.clone();
-	imgGray = Mat::zeros(img.rows, img.cols, CV_8UC1);
-	detect_img = Mat::zeros(img.rows,img.cols,  CV_8UC1);
-    cv::cvtColor(imgTemp, imgGray, CV_RGB2GRAY);
-	m_LucasKanade.Init(imgGray);
-	BGModel.init(imgGray);
+	Mat mat_imgGray;
+	imgGray.copyTo(mat_imgGray);
+	m_LucasKanade.Init(imgGray.cols,imgGray.rows);
+	BGModel.init(mat_imgGray);
 	imgGrayPrev=imgGray.clone();
 }
 cv::Point2f MCDWrapper::compensate(cv::Point2f point,double(*h)[9])
@@ -33,8 +30,8 @@ cv::Point2f MCDWrapper::compensate(cv::Point2f point,double(*h)[9])
 		       float newW = 0;
 		       float newX = 0;
 		       float newY = 0;
-			   int modelWidth=imgGray.cols;
-			   int modelHeight=imgGray.rows;
+			   int modelWidth=imgGrayPrev.cols;
+			   int modelHeight=imgGrayPrev.rows;
 			   int X=point.x;
 			   int Y=point.y;
 				// transformed coordinates with h
@@ -137,41 +134,38 @@ cv::Point2f MCDWrapper::compensate(cv::Point2f point,double(*h)[9])
 				}
 				return cv::Point2f(newX,newY);
 }
-std::vector<cv::Rect> MCDWrapper::Run(const Mat & input_img,int frame_num)
+
+std::vector<cv::Rect> MCDWrapper::Run(const UMat & imgGray)
 {   clock_t startTime1,endTime1;
 	clock_t startTime2,endTime2;
 	clock_t startTime3,endTime3;
 	clock_t startTime4,endTime4;
 	clock_t startTime5,endTime5;
-
-
 	clock_t startRunTrack,endRunTrack;
 	clock_t startGetHomography,endGetHomography;
 	clock_t startGetmotionCompensate,endmotionCompensate;
+
+
 	/*************************
 	计算KLT 单应矩阵H 模型补偿
     **************************/
 	startTime1 = clock();
 	frm_cnt++;
-	cv::cvtColor(input_img, imgGray, CV_RGB2GRAY);
 	double h[16][9];
 	startRunTrack=clock();
 	m_LucasKanade.RunTrack(imgGray, imgGrayPrev);
 	endRunTrack=clock();
 
-    startGetHomography=clock();
 	m_LucasKanade.GetHomography(h);
-    endGetHomography=clock();
 
     startGetmotionCompensate=clock();
-	BGModel.motionCompensate(h,frame_num);
+	BGModel.motionCompensate(h);
     endmotionCompensate=clock();
 
 	double time1 =endRunTrack-startRunTrack;
-	double time2 =endGetHomography-startGetHomography;
 	double time3 =endmotionCompensate-startGetmotionCompensate;
 
-    std::cout<<"RunTrack:"<<time1/CLOCKS_PER_SEC<<" "<<"GetHomography:"<<time2/CLOCKS_PER_SEC<<" "<<"GetmotionCompensate:"<<time3/CLOCKS_PER_SEC<<std::endl;
+    std::cout<<"RunTrack:"<<time1/CLOCKS_PER_SEC<<" "<<"motionCompensate:"<<time3/CLOCKS_PER_SEC<<std::endl;
 
 	Mat H(3, 3, CV_32F);
     memcpy(H.data,h, sizeof(float) * 9);
@@ -181,7 +175,8 @@ std::vector<cv::Rect> MCDWrapper::Run(const Mat & input_img,int frame_num)
 	模型更新 前景提取
     **************************/
 	startTime2 = clock();
-	Mat Temp= imgGray.clone();
+	Mat Temp;
+	imgGray.copyTo(Temp);
 	BGModel.update(Temp);
 	endTime2 = clock();
 
@@ -194,20 +189,27 @@ std::vector<cv::Rect> MCDWrapper::Run(const Mat & input_img,int frame_num)
 	vector<Rect> bgs_tracked_res;
 	vector<Rect>bgs_tracked_list_point;
     vector<Rect>new_bgs_tracked_res;
-	thresh=Mat::zeros(input_img.rows, input_img.cols, CV_8UC1);
+
+	UMat thresh;
+	thresh=UMat::zeros(imgGray.rows, imgGray.cols, CV_8UC1);
 	Mat kernel = getStructuringElement(MORPH_RECT, Size(5, 5));
+	medianBlur(BGModel.mask, BGModel.mask, 3);
+	// blur(BGModel.mask, BGModel.mask, Size(3, 3));
     dilate(BGModel.mask, thresh, kernel, Point(-1, -1), 1);
     erode(thresh, thresh, kernel, Point(-1, -1), 1);
+	// medianBlur(thresh, thresh, 3);
     background_res.clear();
+	// startTime3 = clock();
     findContours(thresh.clone(), contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
     for (size_t i = 0; i < contours.size(); i++) {
         if (contourArea(contours[i]) < 40)
             continue;
         Rect rect = boundingRect(contours[i]);
 		background_res.push_back(rect);
     }
-	endTime3 = clock();
-    
+
+   	endTime3 = clock(); 
     /************************************
 	tracker追踪 通过运动连续性对运动目标框进行筛选
     *************************************/
@@ -299,23 +301,28 @@ std::vector<cv::Rect> MCDWrapper::Run(const Mat & input_img,int frame_num)
 			if (newX < 0) {
                 newX = 0;
             }
-            if (newX + box.width >= input_img.cols) {
-                newX = input_img.cols - box.width -1;
+            if (newX + box.width >= imgGray.cols) {
+                newX = imgGray.cols - box.width -1;
             }
             if (newY < 0) {
                 newY = 0;
             }
-            if (newY+box.height >= input_img.rows) {
-                newY = input_img.rows - box.height -1;
+            if (newY+box.height >= imgGray.rows) {
+                newY = imgGray.rows - box.height -1;
             }
-			if(box.height>=input_img.rows || box.width>=input_img.cols)
+			if(box.height>=imgGray.rows || box.width>=imgGray.cols)
 			{
 				continue;
 			}
 		    bgs_tracked_list_point.push_back(Rect(int(newX), int(newY), box.width, box.height));
 
-			Mat old_bbox = imgGray(box);
-            Mat new_bbox = imgGrayPrev(Rect(int(newX), int(newY), box.width, box.height));
+
+			UMat old_bbox_tmp = imgGray(box);
+			UMat new_bbox_tmp = imgGrayPrev(Rect(int(newX), int(newY), box.width, box.height));
+            Mat old_bbox;
+			Mat new_bbox;
+            old_bbox_tmp.copyTo(old_bbox);
+			new_bbox_tmp.copyTo(new_bbox);
 
 			if (old_bbox.rows != new_bbox.rows || old_bbox.cols != new_bbox.cols) {
                  continue;
@@ -340,6 +347,7 @@ std::vector<cv::Rect> MCDWrapper::Run(const Mat & input_img,int frame_num)
 	}
 	endTime5 = clock();
 
+    // imgGray.copyTo(imgGrayPrev);
 	imgGrayPrev=imgGray.clone();
 	double t1 =endTime1-startTime1;
 	double t2 =endTime2-startTime2;
@@ -347,7 +355,7 @@ std::vector<cv::Rect> MCDWrapper::Run(const Mat & input_img,int frame_num)
 	double t4 =endTime4-startTime4;
 	double t5 =endTime5-startTime5;
     std::cout<<"KLT:"<<t1/CLOCKS_PER_SEC<<" "<<"BGM:"<<t2/CLOCKS_PER_SEC<<" "<<"TH:"<<t3/CLOCKS_PER_SEC<<" "<<"TRACKER:"<<t4/CLOCKS_PER_SEC<<" "<<"MSE:"<<t5/CLOCKS_PER_SEC<<std::endl;
-	std::cout<<"TOTAL:"<<t1/CLOCKS_PER_SEC+t2/CLOCKS_PER_SEC+t3/CLOCKS_PER_SEC+t4/CLOCKS_PER_SEC+t5/CLOCKS_PER_SEC<<std::endl;
+	// std::cout<<"TOTAL:"<<t1/CLOCKS_PER_SEC+t2/CLOCKS_PER_SEC+t3/CLOCKS_PER_SEC+t4/CLOCKS_PER_SEC+t5/CLOCKS_PER_SEC<<std::endl;
 	return  new_bgs_tracked_res;
 
 }

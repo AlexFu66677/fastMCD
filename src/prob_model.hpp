@@ -25,7 +25,6 @@ class ProbModel {
 
  public:
 
-	Mat m_Cur;
 	Mat m_DistImg;
     Mat mask;
 	float *m_Mean[NUM_MODELS];
@@ -71,9 +70,6 @@ class ProbModel {
 			m_Mean_Temp[i] = 0;
 			m_Var_Temp[i] = 0;
 			m_Age_Temp[i] = 0;
-			m_Mean_TempTTT[i] = 0;
-			m_Var_TempTTT[i] = 0;
-			m_Age_TempTTT[i] = 0;
 		} m_ModelIdx = 0;
 	}
 	~ProbModel() {
@@ -129,8 +125,6 @@ class ProbModel {
 	void init(Mat pInputImg) {
 
 		uninit();
-
-		m_Cur = pInputImg;
 
 		obsWidth = pInputImg.cols;
 		obsHeight = pInputImg.rows;
@@ -195,7 +189,7 @@ class ProbModel {
 
 	}
 
-cl_context CreateContext()
+    cl_context CreateContext()
 {
 
     cl_int errNum;
@@ -222,8 +216,8 @@ cl_context CreateContext()
     return context;
 }
 
-// 二、 创建设备并创建命令队列
-cl_command_queue CreateCommandQueue(cl_context context, cl_device_id* device)
+    // 二、 创建设备并创建命令队列
+    cl_command_queue CreateCommandQueue(cl_context context, cl_device_id* device)
 {
     cl_int errNum;
     cl_device_id* devices;
@@ -250,8 +244,8 @@ cl_command_queue CreateCommandQueue(cl_context context, cl_device_id* device)
     return commandQueue;
 }
 
-// 三、创建和构建程序对象
-cl_program CreateProgram(cl_context context, cl_device_id device, const char* fileName)
+    // 三、创建和构建程序对象
+    cl_program CreateProgram(cl_context context, cl_device_id device, const char* fileName)
 {
     cl_int errNum;
     cl_program program;
@@ -276,8 +270,8 @@ cl_program CreateProgram(cl_context context, cl_device_id device, const char* fi
     return program;
 }
 
-// 创建和构建程序对象
-bool CreateMemObjects(cl_context context, cl_mem memObjects[16],
+    // 创建和构建程序对象
+    bool CreateMemObjects(cl_context context, cl_mem memObjects[16],
         float *di,float *dj,float *idxNewI,float *idxNewJ,	
         float *m_Mean,
         float *m_Var,
@@ -329,7 +323,7 @@ bool CreateMemObjects(cl_context context, cl_mem memObjects[16],
 }
 
 // 释放OpenCL资源
-void Cleanup(cl_context context, cl_command_queue commandQueue,
+    void Cleanup(cl_context context, cl_command_queue commandQueue,
     cl_program program, cl_kernel kernel, cl_mem memObjects[16])
 {
     for (int i = 0; i < 3; i++) {
@@ -349,293 +343,14 @@ void Cleanup(cl_context context, cl_command_queue commandQueue,
         clReleaseContext(context);
 }
 
-	void motionCompensate(double h[16][9],int frame_num) {
+	void motionCompensate(double h[16][9]) {
 
 		int curModelWidth = modelWidth;
 		int curModelHeight = modelHeight;
 		// compensate models for the current view
-		clock_t t1,t2;
-		t1=clock();
-// 		for (int j = 0; j < curModelHeight; ++j) {
-// 			for (int i = 0; i < curModelWidth; ++i) {
-// 				float X, Y;
-// 				float W = 1.0;
-// 				X = BLOCK_SIZE * i + BLOCK_SIZE / 2.0;
-// 				Y = BLOCK_SIZE * j + BLOCK_SIZE / 2.0;
-// 				float newW = 0;
-// 				float newX = 0;
-// 				float newY = 0;
-// 				if(X<obsWidth/4 && Y<obsHeight/4)
-// 				{
-// 				newW = h[0][6] * X + h[0][7] * Y + h[0][8];
-// 				newX = (h[0][0] * X + h[0][1] * Y + h[0][2]) / newW;
-// 				newY = (h[0][3] * X + h[0][4] * Y + h[0][5]) / newW;
-// 				}
-// 				else if(X<obsWidth/2&&X>=obsWidth/4&&Y<obsHeight/4)
-// 				{
-// 				newW = h[1][6] * X + h[1][7] * Y + h[1][8];
-// 				newX = (h[1][0] * X + h[1][1] * Y + h[1][2]) / newW;
-// 				newY = (h[1][3] * X + h[1][4] * Y + h[1][5]) / newW;
-// 				}
-// 				else if(X<obsWidth/4*3&&X>=obsWidth/2&&Y<obsHeight/4)
-// 				{
-// 				newW = h[2][6] * X + h[2][7] * Y + h[2][8];
-// 				newX = (h[2][0] * X + h[2][1] * Y + h[2][2]) / newW;
-// 				newY = (h[2][3] * X + h[2][4] * Y + h[2][5]) / newW;
-// 				}
-// 				else if(X<obsWidth&&X>=obsWidth/4*3&&Y<obsHeight/4)
-// 				{
-// 				newW = h[3][6] * X + h[3][7] * Y + h[3][8];
-// 				newX = (h[3][0] * X + h[3][1] * Y + h[3][2]) / newW;
-// 				newY = (h[3][3] * X + h[3][4] * Y + h[3][5]) / newW;
-// 				}
-// 				else if(X<obsWidth/4&&Y<obsHeight/2&&Y>=obsHeight/4)
-// 				{
-// 				newW = h[4][6] * X + h[4][7] * Y + h[4][8];
-// 				newX = (h[4][0] * X + h[4][1] * Y + h[4][2]) / newW;
-// 				newY = (h[4][3] * X + h[4][4] * Y + h[4][5]) / newW;
-// 				}
-// 				else if(X<obsWidth/2&&X>=obsWidth/4&&Y<obsHeight/2&&Y>=obsHeight/4)
-// 				{
-// 				newW = h[5][6] * X + h[5][7] * Y + h[5][8];
-// 				newX = (h[5][0] * X + h[5][1] * Y + h[5][2]) / newW;
-// 				newY = (h[5][3] * X + h[5][4] * Y + h[5][5]) / newW;
-// 				}
-// 				else if(X<obsWidth/4*3&&X>=obsWidth/2&&Y<obsHeight/2&&Y>=obsHeight/4)
-// 				{
-// 				newW = h[6][6] * X + h[6][7] * Y + h[6][8];
-// 				newX = (h[6][0] * X + h[6][1] * Y + h[6][2]) / newW;
-// 				newY = (h[6][3] * X + h[6][4] * Y + h[6][5]) / newW;
-// 				}
-// 				else if(X<obsWidth&&X>=obsWidth/4*3&&Y<obsHeight/2&&Y>=obsHeight/4)
-// 				{
-// 				newW = h[7][6] * X + h[7][7] * Y + h[7][8];
-// 				newX = (h[7][0] * X + h[7][1] * Y + h[7][2]) / newW;
-// 				newY = (h[7][3] * X + h[7][4] * Y + h[7][5]) / newW;
-// 				}
-// 				else if(X<obsWidth/4&&Y<obsHeight/4*3&&Y>=obsHeight/2)
-// 				{
-// 				newW = h[8][6] * X + h[8][7] * Y + h[8][8];
-// 				newX = (h[8][0] * X + h[8][1] * Y + h[8][2]) / newW;
-// 				newY = (h[8][3] * X + h[8][4] * Y + h[8][5]) / newW;
-// 				}
-// 				else if(X<obsWidth/2&&X>=obsWidth/4&&Y<obsHeight/4*3&&Y>=obsHeight/2)
-// 				{
-// 				newW = h[9][6] * X + h[9][7] * Y + h[9][8];
-// 				newX = (h[9][0] * X + h[9][1] * Y + h[9][2]) / newW;
-// 				newY = (h[9][3] * X + h[9][4] * Y + h[9][5]) / newW;
-// 				}
-// 				else if(X<obsWidth/4*3&&X>=obsWidth/2&&Y<obsHeight/4*3&&Y>=obsHeight/2)
-// 				{
-// 				newW = h[10][6] * X + h[10][7] * Y + h[10][8];
-// 				newX = (h[10][0] * X + h[10][1] * Y + h[10][2]) / newW;
-// 				newY = (h[10][3] * X + h[10][4] * Y + h[10][5]) / newW;
-// 				}
-// 				else if(X<obsWidth&&X>=obsWidth/4*3&&Y<obsHeight/4*3&&Y>=obsHeight/2)
-// 				{
-// 				newW = h[11][6] * X + h[11][7] * Y + h[11][8];
-// 				newX = (h[11][0] * X + h[11][1] * Y + h[11][2]) / newW;
-// 				newY = (h[11][3] * X + h[11][4] * Y + h[11][5]) / newW;
-// 				}
-// 				else if(X<obsWidth/4&&Y<obsHeight&&Y>=obsHeight/4*3)
-// 				{
-// 				newW = h[12][6] * X + h[12][7] * Y + h[12][8];
-// 				newX = (h[12][0] * X + h[12][1] * Y + h[12][2]) / newW;
-// 				newY = (h[12][3] * X + h[12][4] * Y + h[12][5]) / newW;
-// 				}
-// 				else if(X<obsWidth/2&&X>=obsWidth/4&&Y<obsHeight&&Y>=obsHeight/4*3)
-// 				{
-// 				newW = h[13][6] * X + h[13][7] * Y + h[13][8];
-// 				newX = (h[13][0] * X + h[13][1] * Y + h[13][2]) / newW;
-// 				newY = (h[13][3] * X + h[13][4] * Y + h[13][5]) / newW;
-// 				}
-// 				else if(X<obsWidth/4*3&&X>=obsWidth/2&&Y<obsHeight&&Y>=obsHeight/4*3)
-// 				{
-// 				newW = h[14][6] * X + h[14][7] * Y + h[14][8];
-// 				newX = (h[14][0] * X + h[14][1] * Y + h[14][2]) / newW;
-// 				newY = (h[14][3] * X + h[14][4] * Y + h[14][5]) / newW;
-// 				}
-// 				else if(X<obsWidth&&X>=obsWidth/4*3&&Y<obsHeight&&Y>=obsHeight/4*3)
-// 				{
-// 				newW = h[15][6] * X + h[15][7] * Y + h[15][8];
-// 				newX = (h[15][0] * X + h[15][1] * Y + h[15][2]) / newW;
-// 				newY = (h[15][3] * X + h[15][4] * Y + h[15][5]) / newW;
-// 				}
-// 				float newI = newX / BLOCK_SIZE;
-// 				float newJ = newY / BLOCK_SIZE;
-// 				int idxNewI = floor(newI);
-// 				int idxNewJ = floor(newJ);
-// 				float di = newI - ((float)(idxNewI) + 0.5);
-// 				float dj = newJ - ((float)(idxNewJ) + 0.5);
-// 				float w_H = 0.0;
-// 				float w_V = 0.0;
-// 				float w_HV = 0.0;
-// 				float w_self = 0.0;
-// 				float sumW = 0.0;
-// 				int idxNow = i + j * modelWidth;
-// #define WARP_MIX
-// 				// For Mean and Age
-// 				{
-// 					float temp_mean[4][NUM_MODELS];
-// 					float temp_age[4][NUM_MODELS];
-// 					memset(temp_mean, 0, sizeof(float) * 4 * NUM_MODELS);
-// 					memset(temp_age, 0, sizeof(float) * 4 * NUM_MODELS);
-// #ifdef WARP_MIX     
-// 					// Horizontal Neighbor
-// 					if (di != 0) {
-// 						int idx_new_i = idxNewI;
-// 						int idx_new_j = idxNewJ;
-// 						idx_new_i += di > 0 ? 1 : -1;
-// 						if (idx_new_i >= 0 && idx_new_i < curModelWidth && idx_new_j >= 0 && idx_new_j < curModelHeight) {
-// 							w_H = fabs(di) * (1.0 - fabs(dj));
-// 							sumW += w_H;
-// 							int idxNew = idx_new_i + idx_new_j * modelWidth;
-// 							for (int m = 0; m < NUM_MODELS; ++m) {
-// 								temp_mean[0][m] = w_H * m_Mean[m][idxNew];
-// 								temp_age[0][m] = w_H * m_Age[m][idxNew];
-// 							}
-// 						}
-// 					// num1+=1;
-// 					}
-// 					// Vertical Neighbor
-// 					if (dj != 0) {
-// 						int idx_new_i = idxNewI;
-// 						int idx_new_j = idxNewJ;
-// 						idx_new_j += dj > 0 ? 1 : -1;
-// 						if (idx_new_i >= 0 && idx_new_i < curModelWidth && idx_new_j >= 0 && idx_new_j < curModelHeight) {
-// 							w_V = fabs(dj) * (1.0 - fabs(di));
-// 							sumW += w_V;
-// 							int idxNew = idx_new_i + idx_new_j * modelWidth;
-// 							for (int m = 0; m < NUM_MODELS; ++m) {
-// 								temp_mean[1][m] = w_V * m_Mean[m][idxNew];
-// 								temp_age[1][m] = w_V * m_Age[m][idxNew];
-// 							}
-// 						}
-// 						// num2+=1;
-// 					}
-//  					// HV Neighbor
-// 					if (dj != 0 && di != 0) {
-// 						int idx_new_i = idxNewI;
-// 						int idx_new_j = idxNewJ;
-// 						idx_new_i += di > 0 ? 1 : -1;
-// 						idx_new_j += dj > 0 ? 1 : -1;
-// 						if (idx_new_i >= 0 && idx_new_i < curModelWidth && idx_new_j >= 0 && idx_new_j < curModelHeight) {
-// 							w_HV = fabs(di) * fabs(dj);
-// 							sumW += w_HV;
-// 							int idxNew = idx_new_i + idx_new_j * modelWidth;
-// 							for (int m = 0; m < NUM_MODELS; ++m) {
-// 								temp_mean[2][m] = w_HV * m_Mean[m][idxNew];
-// 								temp_age[2][m] = w_HV * m_Age[m][idxNew];
-// 							}
-// 						}
-// 						// num3+=1;
-// 					}
-// #endif
-// 					// Self
-// 					if (idxNewI >= 0 && idxNewI < curModelWidth && idxNewJ >= 0 && idxNewJ < curModelHeight) {
-// 						w_self = (1.0 - fabs(di)) * (1.0 - fabs(dj));
-// 						sumW += w_self;
-// 						int idxNew = idxNewI + idxNewJ * modelWidth;
-// 						for (int m = 0; m < NUM_MODELS; ++m) {
-// 							temp_mean[3][m] = w_self * m_Mean[m][idxNew];						
-// 							temp_age[3][m] = w_self * m_Age[m][idxNew];
-// 						}
-// 					}
-// 				if (sumW > 0) {
-// 						for (int m = 0; m < NUM_MODELS; ++m) {	
-// 							m_Mean_TempTTT[m][idxNow] = (temp_mean[0][m]+temp_mean[1][m]+temp_mean[2][m]+temp_mean[3][m])/sumW;
-// 							m_Age_TempTTT[m][idxNow] = (temp_age[0][m]+temp_age[1][m]+temp_age[2][m]+temp_age[3][m])/sumW;
-// 							// m_Var_TempTTT[0][idxNow] = sumW;
-// 						}
-// 					}else{
-// 						for (int m = 0; m < NUM_MODELS; ++m) {	
-// 							m_Mean_TempTTT[m][idxNow] = m_Mean_Temp[m][idxNow];
-// 							m_Age_TempTTT[m][idxNow] = m_Age_Temp[m][idxNow];
-// 							// m_Var_TempTTT[0][idxNow] = m_Var_Temp[0][idxNow];
-// 						}
-// 					}
-// 				}
-// 				{
-// 					float temp_var[4][NUM_MODELS];
-// 					memset(temp_var, 0, sizeof(float) * 4 * NUM_MODELS);
-//  #ifdef WARP_MIX
-// // 					// Horizontal Neighbor
-// 					if (di != 0) {
-// 						int idx_new_i = idxNewI;
-// 						int idx_new_j = idxNewJ;
-// 						idx_new_i += di > 0 ? 1 : -1;
-// 						if (idx_new_i >= 0 && idx_new_i < curModelWidth && idx_new_j >= 0 && idx_new_j < curModelHeight) {
-// 							int idxNew = idx_new_i + idx_new_j * modelWidth;
-// 							for (int m = 0; m < NUM_MODELS; ++m) {
-// 								float tmp=m_Mean_TempTTT[m][idxNow] - m_Mean[m][idxNew];
-// 								temp_var[0][m] = w_H * (m_Var[m][idxNew] +  tmp * tmp);
-// 							}
-// 						}
-// 					}
-// 					// Vertical Neighbor
-// 					if (dj != 0) {
-// 						int idx_new_i = idxNewI;
-// 						int idx_new_j = idxNewJ;
-// 						idx_new_j += dj > 0 ? 1 : -1;
-// 						if (idx_new_i >= 0 && idx_new_i < curModelWidth && idx_new_j >= 0 && idx_new_j < curModelHeight) {
-// 							int idxNew = idx_new_i + idx_new_j * modelWidth;
-// 							for (int m = 0; m < NUM_MODELS; ++m) {
-// 								float tmp=m_Mean_TempTTT[m][idxNow] - m_Mean[m][idxNew];
-// 								temp_var[1][m] = w_V * (m_Var[m][idxNew] + tmp * tmp);
-// 							}
-// 						}
-// 					}
-// // 					// HV Neighbor
-// 					if (dj != 0 && di != 0) {
-// 						int idx_new_i = idxNewI;
-// 						int idx_new_j = idxNewJ;
-// 						idx_new_i += di > 0 ? 1 : -1;
-// 						idx_new_j += dj > 0 ? 1 : -1;
-// 						if (idx_new_i >= 0 && idx_new_i < curModelWidth && idx_new_j >= 0 && idx_new_j < curModelHeight) {
-// 							int idxNew = idx_new_i + idx_new_j * modelWidth;
-// 							for (int m = 0; m < NUM_MODELS; ++m) {
-// 								float tmp=m_Mean_TempTTT[m][idxNow] - m_Mean[m][idxNew];
-// 								temp_var[2][m] = w_HV * (m_Var[m][idxNew] + VARIANCE_INTERPOLATE_PARAM * tmp * tmp);
-// 							}
-// 						}
-// 					}
-// #endif
-// 					// Self
-// 					if (idxNewI >= 0 && idxNewI < curModelWidth && idxNewJ >= 0 && idxNewJ < curModelHeight) {
-// 						int idxNew = idxNewI + idxNewJ * modelWidth;
-// 						for (int m = 0; m < NUM_MODELS; ++m) {
-// 							temp_var[3][m] = w_self * (m_Var[m][idxNew] + VARIANCE_INTERPOLATE_PARAM * (m_Mean_TempTTT[m][idxNow] - m_Mean[m][idxNew])*(m_Mean_TempTTT[m][idxNow] - m_Mean[m][idxNew]));
-// 						}
-// 					}
-// 				    if (sumW > 0) {
-// 						for (int m = 0; m < NUM_MODELS; ++m) {
-// 							m_Var_TempTTT[m][idxNow] = (temp_var[0][m]+ temp_var[1][m]+ temp_var[2][m]+temp_var[3][m])/sumW;
-// 						}
-// 						}else
-// 						{
-// 						for (int m = 0; m < NUM_MODELS; ++m) {
-// 							m_Var_TempTTT[m][idxNow] = 400;
-// 						}
-// 						}
-// 				 }
-// 				// // Limitations and Exceptions
-// 				for (int m = 0; m < NUM_MODELS; ++m) {
-// 					m_Var_Temp[m][i + j * modelWidth] = MAX(m_Var_Temp[m][i + j * modelWidth], MIN_BG_VAR);
-// 				}
-// 				if (idxNewI < 1 || idxNewI >= modelWidth - 1 || idxNewJ < 1 || idxNewJ >= modelHeight - 1) {
-// 					for (int m = 0; m < NUM_MODELS; ++m) {
-// 						m_Var_Temp[m][i + j * modelWidth] = INIT_BG_VAR;
-// 						m_Age_Temp[m][i + j * modelWidth] = 0;
-// 					}
-// 				} else {
-// 					for (int m = 0; m < NUM_MODELS; ++m) {
-// 						m_Age_Temp[m][i + j * modelWidth] =
-// 						    MIN(m_Age_TempTTT[m][i + j * modelWidth] * exp(-VAR_DEC_RATIO * MAX(0.0, m_Var_Temp[m][i + j * modelWidth] - VAR_MIN_NOISE_T)), MAX_BG_AGE);
-// 					}
-//  				}
-// 			}
-// 		}
-
+		clock_t t1,t2,t3,t4,t5,t6,t7,t8;
+t1=clock();
+t3=clock();
 		for (int j = 0; j < curModelHeight; ++j) {
 			for (int i = 0; i < curModelWidth; ++i) {
 				float X, Y;
@@ -756,13 +471,13 @@ void Cleanup(cl_context context, cl_command_queue commandQueue,
 			}
 		}
     // 创建内存对象
+
     if (!CreateMemObjects(context, memObjects, di,dj,idxNewI,idxNewJ,
                           m_Mean[0],m_Var[0],m_Age[0],m_Mean_Temp[0],m_Var_Temp[0],m_Age_Temp[0],
                           m_Mean[1],m_Var[1],m_Age[1],m_Mean_Temp[1],m_Var_Temp[1],m_Age_Temp[1])) {
         Cleanup(context, commandQueue, program, kernel, memObjects);
     }
     // 五、 设置内核数据并执行内核
-
     errNum = clSetKernelArg(kernel, 0, sizeof(cl_mem), &memObjects[0]);
     errNum |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &memObjects[1]);
     errNum |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &memObjects[2]);
@@ -779,12 +494,17 @@ void Cleanup(cl_context context, cl_command_queue commandQueue,
     errNum |= clSetKernelArg(kernel, 13, sizeof(cl_mem), &memObjects[13]);
     errNum |= clSetKernelArg(kernel, 14, sizeof(cl_mem), &memObjects[14]);
     errNum |= clSetKernelArg(kernel, 15, sizeof(cl_mem), &memObjects[15]);
-    size_t globalWorkSize[1] = { modelWidth * modelHeight };
+    size_t globalWorkSize[1] = { (size_t)modelWidth * (size_t)modelHeight };
     size_t localWorkSize[1] = {10};
+t4=clock();
 
+t5=clock();
 	errNum = clEnqueueNDRangeKernel(commandQueue, kernel, 1, NULL,
         globalWorkSize, localWorkSize,
         0, NULL, NULL);	
+t6=clock();
+
+t7=clock();
     errNum = clEnqueueReadBuffer(commandQueue, memObjects[7], CL_TRUE,
         0, modelWidth * modelHeight * sizeof(float), m_Mean_Temp[0],
         0, NULL, NULL);
@@ -808,29 +528,17 @@ void Cleanup(cl_context context, cl_command_queue commandQueue,
         if (memObjects[i] != 0)
             clReleaseMemObject(memObjects[i]);
     }
-
-
-
-		// for (int j = 0; j < curModelHeight; ++j) {
-		// 	for (int i = 0; i < curModelWidth; ++i) {
-		// 		for (int m = 0; m < NUM_MODELS; ++m) {
-		// 		int idxNow = i + j * modelWidth;
-		// 		if(fabs(m_Var_TempTTT[m][idxNow]-m_Var_Temp[m][idxNow])>0.1)
-		// 		{
-		// 			std::cout<<"["<<m<<","<<i<<","<<j<<"]"<<m_Var_TempTTT[m][idxNow]<<" "<<m_Var_Temp[m][idxNow]<<" " ;
-		// 		}
-		// 		}
-		// 	}}
-
-
+t8=clock();
 t2=clock();
-double t=t2-t1;
-std::cout<<"Compensate"<<t/CLOCKS_PER_SEC<<std::endl;
-// std::cout<<"num1:"<<num1<<"num2:"<<num2<<"num3:"<<num3<<"num4:"<<num4<<std::endl;
+// double t=t2-t1;
+// double tt=t4-t3;
+// double ttt=t6-t5;
+// double tttt=t8-t7;
+// std::cout<<"opencl:"<<t/CLOCKS_PER_SEC<<" "<<"cpu2gpu:"<<tt/CLOCKS_PER_SEC<<" "<<"cal:"<<ttt/CLOCKS_PER_SEC<<" "<<"gpu2cpu:"<<tttt/CLOCKS_PER_SEC<<std::endl;
 }
 
 	void update(const Mat& pOutputImg) {
-		clock_t t1,t2,t3,t4,t5,t6;
+		// clock_t t1,t2,t3,t4,t5,t6;
 		// cv::cvtColor(pOutputImg, pOutputImg, cv::COLOR_BGR2GRAY);
 		int curModelWidth = modelWidth;
 		int curModelHeight = modelHeight;
@@ -838,7 +546,7 @@ std::cout<<"Compensate"<<t/CLOCKS_PER_SEC<<std::endl;
 		//////////////////////////////////////////////////////////////////////////
 		// Find Matching Model
 		memset(m_ModelIdx, 0, sizeof(int) * modelHeight * modelWidth);
-        t1=clock();
+        // t1=clock();
 		for (int bIdx_j = 0; bIdx_j < curModelHeight; bIdx_j++) {
 			for (int bIdx_i = 0; bIdx_i < curModelWidth; bIdx_i++) {
 
@@ -906,11 +614,11 @@ std::cout<<"Compensate"<<t/CLOCKS_PER_SEC<<std::endl;
 
 			}
 		}		// loop for models
-        t2=clock();
+        // t2=clock();
 		// update with current observation
 		float obs_mean[NUM_MODELS];
 		float obs_var[NUM_MODELS];
-        t3=clock();
+        // t3=clock();
 		for (int bIdx_j = 0; bIdx_j < curModelHeight; bIdx_j++) {
 			for (int bIdx_i = 0; bIdx_i < curModelWidth; bIdx_i++) {
 
@@ -960,9 +668,9 @@ std::cout<<"Compensate"<<t/CLOCKS_PER_SEC<<std::endl;
 				}
 			}
 		}
-        t4=clock();
+        // t4=clock();
 		
-		t5=clock();
+		// t5=clock();
 		for (int bIdx_j = 0; bIdx_j < curModelHeight; bIdx_j++) {
 			for (int bIdx_i = 0; bIdx_i < curModelWidth; bIdx_i++) {
 				// TODO: OPTIMIZE THIS PART SO THAT WE DO NOT CALCULATE THIS (LUT)
@@ -1029,11 +737,11 @@ std::cout<<"Compensate"<<t/CLOCKS_PER_SEC<<std::endl;
 
 			}
 		}
-	    t6=clock();
-		double run1=t2-t1;
-		double run2=t4-t3;
-		double run3=t6-t5;
-		std::cout<<"Run1:"<<run1/CLOCKS_PER_SEC<<" "<<"Run2:"<<run2/CLOCKS_PER_SEC<<" "<<"Run3:"<<run3/CLOCKS_PER_SEC<<std::endl;
+	    // t6=clock();
+		// double run1=t2-t1;
+		// double run2=t4-t3;
+		// double run3=t6-t5;
+		// std::cout<<"Run1:"<<run1/CLOCKS_PER_SEC<<" "<<"Run2:"<<run2/CLOCKS_PER_SEC<<" "<<"Run3:"<<run3/CLOCKS_PER_SEC<<std::endl;
 	 }
 };
 
