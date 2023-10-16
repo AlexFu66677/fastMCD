@@ -56,6 +56,7 @@ class ProbModel {
     cl_program program = 0;
     cl_device_id device = 0;
     cl_kernel kernel = 0;
+	cl_kernel h_kernel = 0;
     cl_mem memObjects[16] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
     cl_int errNum;
 
@@ -184,6 +185,7 @@ class ProbModel {
     program = CreateProgram(context, device, "compensate.cl");
     // 四、 创建OpenCL内核并分配内存空间
     kernel = clCreateKernel(program, "compensate_kernel", NULL);
+	h_kernel = clCreateKernel(program, "h_cal_kernel", NULL);
 	// motionCompensate(h,0);
 	update(pInputImg);
 
@@ -271,8 +273,8 @@ class ProbModel {
 }
 
     // 创建和构建程序对象
-    bool CreateMemObjects(cl_context context, cl_mem memObjects[16],
-        float *di,float *dj,float *idxNewI,float *idxNewJ,	
+    bool CreateMemObjects(cl_context context, cl_mem memObjects[13],
+  		double *h,
         float *m_Mean,
         float *m_Var,
         float *m_Age,
@@ -287,37 +289,31 @@ class ProbModel {
         float *m_Age_Temp1
         )
 {
-    memObjects[0] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-        sizeof(float) * modelWidth * modelHeight, di, NULL);
-    memObjects[1] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-        sizeof(float) * modelWidth * modelHeight, dj, NULL);
-    memObjects[2] = clCreateBuffer(context, CL_MEM_READ_WRITE| CL_MEM_COPY_HOST_PTR,
-        sizeof(float) * modelWidth * modelHeight, idxNewI, NULL);
-    memObjects[3] = clCreateBuffer(context, CL_MEM_READ_WRITE| CL_MEM_COPY_HOST_PTR,
-        sizeof(float) * modelWidth * modelHeight, idxNewJ, NULL);
-    memObjects[4] = clCreateBuffer(context, CL_MEM_READ_ONLY| CL_MEM_COPY_HOST_PTR,
+    memObjects[0] = clCreateBuffer(context, CL_MEM_READ_ONLY| CL_MEM_COPY_HOST_PTR,
+        sizeof(double) * 16 * 9, h, NULL);
+    memObjects[1] = clCreateBuffer(context, CL_MEM_READ_ONLY| CL_MEM_COPY_HOST_PTR,
         sizeof(float) * modelWidth * modelHeight, m_Mean, NULL);
-    memObjects[5] = clCreateBuffer(context, CL_MEM_READ_ONLY| CL_MEM_COPY_HOST_PTR,
+    memObjects[2] = clCreateBuffer(context, CL_MEM_READ_ONLY| CL_MEM_COPY_HOST_PTR,
         sizeof(float) * modelWidth * modelHeight, m_Var, NULL);
-    memObjects[6] = clCreateBuffer(context, CL_MEM_READ_ONLY| CL_MEM_COPY_HOST_PTR,
+    memObjects[3] = clCreateBuffer(context, CL_MEM_READ_ONLY| CL_MEM_COPY_HOST_PTR,
         sizeof(float) * modelWidth * modelHeight, m_Age, NULL);
-    memObjects[7] = clCreateBuffer(context, CL_MEM_READ_WRITE| CL_MEM_COPY_HOST_PTR,
+    memObjects[4] = clCreateBuffer(context, CL_MEM_READ_WRITE| CL_MEM_COPY_HOST_PTR,
         sizeof(float) * modelWidth * modelHeight, m_Mean_Temp, NULL);
-    memObjects[8] = clCreateBuffer(context, CL_MEM_READ_WRITE| CL_MEM_COPY_HOST_PTR,
+    memObjects[5] = clCreateBuffer(context, CL_MEM_READ_WRITE| CL_MEM_COPY_HOST_PTR,
         sizeof(float) * modelWidth * modelHeight, m_Var_Temp, NULL);
-    memObjects[9] = clCreateBuffer(context, CL_MEM_READ_WRITE| CL_MEM_COPY_HOST_PTR,
+    memObjects[6] = clCreateBuffer(context, CL_MEM_READ_WRITE| CL_MEM_COPY_HOST_PTR,
         sizeof(float) * modelWidth * modelHeight, m_Age_Temp, NULL);
-    memObjects[10] = clCreateBuffer(context, CL_MEM_READ_ONLY| CL_MEM_COPY_HOST_PTR,
+    memObjects[7] = clCreateBuffer(context, CL_MEM_READ_ONLY| CL_MEM_COPY_HOST_PTR,
         sizeof(float) * modelWidth * modelHeight, m_Mean1, NULL);
-    memObjects[11] = clCreateBuffer(context, CL_MEM_READ_ONLY| CL_MEM_COPY_HOST_PTR,
+    memObjects[8] = clCreateBuffer(context, CL_MEM_READ_ONLY| CL_MEM_COPY_HOST_PTR,
         sizeof(float) * modelWidth * modelHeight, m_Var1, NULL);
-    memObjects[12] = clCreateBuffer(context, CL_MEM_READ_ONLY| CL_MEM_COPY_HOST_PTR,
+    memObjects[9] = clCreateBuffer(context, CL_MEM_READ_ONLY| CL_MEM_COPY_HOST_PTR,
         sizeof(float) * modelWidth * modelHeight, m_Age1, NULL);
-    memObjects[13] = clCreateBuffer(context, CL_MEM_READ_WRITE| CL_MEM_COPY_HOST_PTR,
+    memObjects[10] = clCreateBuffer(context, CL_MEM_READ_WRITE| CL_MEM_COPY_HOST_PTR,
         sizeof(float) * modelWidth * modelHeight, m_Mean_Temp1, NULL);
-    memObjects[14] = clCreateBuffer(context, CL_MEM_READ_WRITE| CL_MEM_COPY_HOST_PTR,
+    memObjects[11] = clCreateBuffer(context, CL_MEM_READ_WRITE| CL_MEM_COPY_HOST_PTR,
         sizeof(float) * modelWidth * modelHeight, m_Var_Temp1,NULL);
-    memObjects[15] = clCreateBuffer(context, CL_MEM_READ_WRITE| CL_MEM_COPY_HOST_PTR,
+    memObjects[12] = clCreateBuffer(context, CL_MEM_READ_WRITE| CL_MEM_COPY_HOST_PTR,
         sizeof(float) * modelWidth * modelHeight, m_Age_Temp1, NULL);
     return true;
 }
@@ -343,140 +339,21 @@ class ProbModel {
         clReleaseContext(context);
 }
 
-	void motionCompensate(double h[16][9]) {
+	void motionCompensate(double *h) {
 
 		int curModelWidth = modelWidth;
 		int curModelHeight = modelHeight;
-		// compensate models for the current view
-		clock_t t1,t2,t3,t4,t5,t6,t7,t8;
-t1=clock();
-t3=clock();
-		for (int j = 0; j < curModelHeight; ++j) {
-			for (int i = 0; i < curModelWidth; ++i) {
-				float X, Y;
-				float W = 1.0;
-				X = BLOCK_SIZE * i + BLOCK_SIZE / 2.0;
-				Y = BLOCK_SIZE * j + BLOCK_SIZE / 2.0;
-				float newW = 0;
-				float newX = 0;
-				float newY = 0;
-				int idxNow = i + j * modelWidth;
-
-				if(X<obsWidth/4 && Y<obsHeight/4)
-				{
-				newW = h[0][6] * X + h[0][7] * Y + h[0][8];
-				newX = (h[0][0] * X + h[0][1] * Y + h[0][2]) / newW;
-				newY = (h[0][3] * X + h[0][4] * Y + h[0][5]) / newW;
-				}
-				else if(X<obsWidth/2&&X>=obsWidth/4&&Y<obsHeight/4)
-				{
-				newW = h[1][6] * X + h[1][7] * Y + h[1][8];
-				newX = (h[1][0] * X + h[1][1] * Y + h[1][2]) / newW;
-				newY = (h[1][3] * X + h[1][4] * Y + h[1][5]) / newW;
-				}
-				else if(X<obsWidth/4*3&&X>=obsWidth/2&&Y<obsHeight/4)
-				{
-				newW = h[2][6] * X + h[2][7] * Y + h[2][8];
-				newX = (h[2][0] * X + h[2][1] * Y + h[2][2]) / newW;
-				newY = (h[2][3] * X + h[2][4] * Y + h[2][5]) / newW;
-				}
-				else if(X<obsWidth&&X>=obsWidth/4*3&&Y<obsHeight/4)
-				{
-				newW = h[3][6] * X + h[3][7] * Y + h[3][8];
-				newX = (h[3][0] * X + h[3][1] * Y + h[3][2]) / newW;
-				newY = (h[3][3] * X + h[3][4] * Y + h[3][5]) / newW;
-				}
-				else if(X<obsWidth/4&&Y<obsHeight/2&&Y>=obsHeight/4)
-				{
-				newW = h[4][6] * X + h[4][7] * Y + h[4][8];
-				newX = (h[4][0] * X + h[4][1] * Y + h[4][2]) / newW;
-				newY = (h[4][3] * X + h[4][4] * Y + h[4][5]) / newW;
-				}
-				else if(X<obsWidth/2&&X>=obsWidth/4&&Y<obsHeight/2&&Y>=obsHeight/4)
-				{
-				newW = h[5][6] * X + h[5][7] * Y + h[5][8];
-				newX = (h[5][0] * X + h[5][1] * Y + h[5][2]) / newW;
-				newY = (h[5][3] * X + h[5][4] * Y + h[5][5]) / newW;
-				}
-				else if(X<obsWidth/4*3&&X>=obsWidth/2&&Y<obsHeight/2&&Y>=obsHeight/4)
-				{
-				newW = h[6][6] * X + h[6][7] * Y + h[6][8];
-				newX = (h[6][0] * X + h[6][1] * Y + h[6][2]) / newW;
-				newY = (h[6][3] * X + h[6][4] * Y + h[6][5]) / newW;
-				}
-				else if(X<obsWidth&&X>=obsWidth/4*3&&Y<obsHeight/2&&Y>=obsHeight/4)
-				{
-				newW = h[7][6] * X + h[7][7] * Y + h[7][8];
-				newX = (h[7][0] * X + h[7][1] * Y + h[7][2]) / newW;
-				newY = (h[7][3] * X + h[7][4] * Y + h[7][5]) / newW;
-				}
-				else if(X<obsWidth/4&&Y<obsHeight/4*3&&Y>=obsHeight/2)
-				{
-				newW = h[8][6] * X + h[8][7] * Y + h[8][8];
-				newX = (h[8][0] * X + h[8][1] * Y + h[8][2]) / newW;
-				newY = (h[8][3] * X + h[8][4] * Y + h[8][5]) / newW;
-				}
-				else if(X<obsWidth/2&&X>=obsWidth/4&&Y<obsHeight/4*3&&Y>=obsHeight/2)
-				{
-				newW = h[9][6] * X + h[9][7] * Y + h[9][8];
-				newX = (h[9][0] * X + h[9][1] * Y + h[9][2]) / newW;
-				newY = (h[9][3] * X + h[9][4] * Y + h[9][5]) / newW;
-				}
-				else if(X<obsWidth/4*3&&X>=obsWidth/2&&Y<obsHeight/4*3&&Y>=obsHeight/2)
-				{
-				newW = h[10][6] * X + h[10][7] * Y + h[10][8];
-				newX = (h[10][0] * X + h[10][1] * Y + h[10][2]) / newW;
-				newY = (h[10][3] * X + h[10][4] * Y + h[10][5]) / newW;
-				}
-				else if(X<obsWidth&&X>=obsWidth/4*3&&Y<obsHeight/4*3&&Y>=obsHeight/2)
-				{
-				newW = h[11][6] * X + h[11][7] * Y + h[11][8];
-				newX = (h[11][0] * X + h[11][1] * Y + h[11][2]) / newW;
-				newY = (h[11][3] * X + h[11][4] * Y + h[11][5]) / newW;
-				}
-				else if(X<obsWidth/4&&Y<obsHeight&&Y>=obsHeight/4*3)
-				{
-				newW = h[12][6] * X + h[12][7] * Y + h[12][8];
-				newX = (h[12][0] * X + h[12][1] * Y + h[12][2]) / newW;
-				newY = (h[12][3] * X + h[12][4] * Y + h[12][5]) / newW;
-				}
-				else if(X<obsWidth/2&&X>=obsWidth/4&&Y<obsHeight&&Y>=obsHeight/4*3)
-				{
-				newW = h[13][6] * X + h[13][7] * Y + h[13][8];
-				newX = (h[13][0] * X + h[13][1] * Y + h[13][2]) / newW;
-				newY = (h[13][3] * X + h[13][4] * Y + h[13][5]) / newW;
-				}
-				else if(X<obsWidth/4*3&&X>=obsWidth/2&&Y<obsHeight&&Y>=obsHeight/4*3)
-				{
-				newW = h[14][6] * X + h[14][7] * Y + h[14][8];
-				newX = (h[14][0] * X + h[14][1] * Y + h[14][2]) / newW;
-				newY = (h[14][3] * X + h[14][4] * Y + h[14][5]) / newW;
-				}
-				else if(X<obsWidth&&X>=obsWidth/4*3&&Y<obsHeight&&Y>=obsHeight/4*3)
-				{
-				newW = h[15][6] * X + h[15][7] * Y + h[15][8];
-				newX = (h[15][0] * X + h[15][1] * Y + h[15][2]) / newW;
-				newY = (h[15][3] * X + h[15][4] * Y + h[15][5]) / newW;
-				}
-
-				float newI = newX / BLOCK_SIZE;
-				float newJ = newY / BLOCK_SIZE;
-
-				idxNewI[i + j * modelWidth] = floor(newI);
-				idxNewJ[i + j * modelWidth] = floor(newJ);
-
-				di[i + j * modelWidth] = newI - (idxNewI[i + j * modelWidth] + 0.5);
-				dj[i + j * modelWidth] = newJ - (idxNewJ[i + j * modelWidth] + 0.5);			
-
-			}
-		}
-    // 创建内存对象
-
-    if (!CreateMemObjects(context, memObjects, di,dj,idxNewI,idxNewJ,
+	// 	clock_t t1,t2,t3,t4,t5,t6,t7,t8,t9,t10,ts,te;
+	// ts=clock();
+    // t1=clock();
+    if (!CreateMemObjects(context, memObjects,h,
                           m_Mean[0],m_Var[0],m_Age[0],m_Mean_Temp[0],m_Var_Temp[0],m_Age_Temp[0],
                           m_Mean[1],m_Var[1],m_Age[1],m_Mean_Temp[1],m_Var_Temp[1],m_Age_Temp[1])) {
         Cleanup(context, commandQueue, program, kernel, memObjects);
     }
+	// t2=clock();
+
+	// t3=clock();
     // 五、 设置内核数据并执行内核
     errNum = clSetKernelArg(kernel, 0, sizeof(cl_mem), &memObjects[0]);
     errNum |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &memObjects[1]);
@@ -491,50 +368,52 @@ t3=clock();
     errNum |= clSetKernelArg(kernel, 10, sizeof(cl_mem), &memObjects[10]);
     errNum |= clSetKernelArg(kernel, 11, sizeof(cl_mem), &memObjects[11]);
     errNum |= clSetKernelArg(kernel, 12, sizeof(cl_mem), &memObjects[12]);
-    errNum |= clSetKernelArg(kernel, 13, sizeof(cl_mem), &memObjects[13]);
-    errNum |= clSetKernelArg(kernel, 14, sizeof(cl_mem), &memObjects[14]);
-    errNum |= clSetKernelArg(kernel, 15, sizeof(cl_mem), &memObjects[15]);
     size_t globalWorkSize[1] = { (size_t)modelWidth * (size_t)modelHeight };
     size_t localWorkSize[1] = {10};
-t4=clock();
+    // t4=clock();
 
-t5=clock();
+    // t5=clock();
 	errNum = clEnqueueNDRangeKernel(commandQueue, kernel, 1, NULL,
         globalWorkSize, localWorkSize,
         0, NULL, NULL);	
-t6=clock();
+    // t6=clock();
 
-t7=clock();
-    errNum = clEnqueueReadBuffer(commandQueue, memObjects[7], CL_TRUE,
+    // t7=clock();
+    errNum = clEnqueueReadBuffer(commandQueue, memObjects[4], CL_TRUE,
         0, modelWidth * modelHeight * sizeof(float), m_Mean_Temp[0],
         0, NULL, NULL);
-	errNum = clEnqueueReadBuffer(commandQueue, memObjects[8], CL_TRUE,
+	errNum = clEnqueueReadBuffer(commandQueue, memObjects[5], CL_TRUE,
         0, modelWidth * modelHeight * sizeof(float), m_Var_Temp[0],
         0, NULL, NULL);
-    errNum = clEnqueueReadBuffer(commandQueue, memObjects[9], CL_TRUE,
+    errNum = clEnqueueReadBuffer(commandQueue, memObjects[6], CL_TRUE,
         0, modelWidth * modelHeight * sizeof(float), m_Age_Temp[0],
         0, NULL, NULL);
-    errNum = clEnqueueReadBuffer(commandQueue, memObjects[13], CL_TRUE,
+    errNum = clEnqueueReadBuffer(commandQueue, memObjects[10], CL_TRUE,
         0, modelWidth * modelHeight * sizeof(float), m_Mean_Temp[1],
         0, NULL, NULL);
-	errNum = clEnqueueReadBuffer(commandQueue, memObjects[14], CL_TRUE,
+	errNum = clEnqueueReadBuffer(commandQueue, memObjects[11], CL_TRUE,
         0, modelWidth * modelHeight * sizeof(float), m_Var_Temp[1],
         0, NULL, NULL);
-    errNum = clEnqueueReadBuffer(commandQueue, memObjects[15], CL_TRUE,
+    errNum = clEnqueueReadBuffer(commandQueue, memObjects[12], CL_TRUE,
         0, modelWidth * modelHeight * sizeof(float), m_Age_Temp[1],
         0, NULL, NULL);
+    // t8=clock();
 
+	// t9=clock();
     for (int i = 0; i < 16; i++) {
         if (memObjects[i] != 0)
             clReleaseMemObject(memObjects[i]);
     }
-t8=clock();
-t2=clock();
+//     t10=clock();
+// 	te=clock();
 // double t=t2-t1;
 // double tt=t4-t3;
 // double ttt=t6-t5;
 // double tttt=t8-t7;
-// std::cout<<"opencl:"<<t/CLOCKS_PER_SEC<<" "<<"cpu2gpu:"<<tt/CLOCKS_PER_SEC<<" "<<"cal:"<<ttt/CLOCKS_PER_SEC<<" "<<"gpu2cpu:"<<tttt/CLOCKS_PER_SEC<<std::endl;
+// double ttttt=t10-t9;
+// double tttttt=te-ts;
+// std::cout<<"CreateMemObjects:"<<t/CLOCKS_PER_SEC<<" "<<"clSetKernelArg:"<<tt/CLOCKS_PER_SEC<<" "<<"clEnqueueNDRangeKernel:"<<ttt/CLOCKS_PER_SEC<<" "<<"clEnqueueReadBuffer:"<<tttt/CLOCKS_PER_SEC<<
+// " "<<"clReleaseMemObject:"<<ttttt/CLOCKS_PER_SEC<<" "<<"all:"<<tttttt/CLOCKS_PER_SEC<<std::endl;
 }
 
 	void update(const Mat& pOutputImg) {
@@ -544,13 +423,11 @@ t2=clock();
 		int curModelHeight = modelHeight;
 		mask = Mat::zeros(obsHeight, obsWidth, CV_8UC1);
 		//////////////////////////////////////////////////////////////////////////
-		// Find Matching Model
 		memset(m_ModelIdx, 0, sizeof(int) * modelHeight * modelWidth);
         // t1=clock();
 		for (int bIdx_j = 0; bIdx_j < curModelHeight; bIdx_j++) {
 			for (int bIdx_i = 0; bIdx_i < curModelWidth; bIdx_i++) {
 
-				// base (i,j) for this block
 				int idx_base_i;
 				int idx_base_j;
 				idx_base_i = ((float)bIdx_i) * BLOCK_SIZE;
@@ -558,6 +435,7 @@ t2=clock();
 
 				float cur_mean = 0;
 				float elem_cnt = 0;
+				//计算block均值
 				for (int jj = 0; jj < BLOCK_SIZE; ++jj) {
 					for (int ii = 0; ii < BLOCK_SIZE; ++ii) {
 
@@ -570,11 +448,11 @@ t2=clock();
 						cur_mean += pOutputImg.at<uchar>(idx_j, idx_i);
 						elem_cnt += 1.0;
 					}
-				}	//loop for pixels
+				}	
 				cur_mean /= elem_cnt;
 
 				//////////////////////////////////////////////////////////////////////////
-				// Make Oldest Idx to 0 (swap)
+				//查看模型的age，比较模型0和模型1的age，确定oldIdx，oldAge
 				int oldIdx = 0;
 				float oldAge = 0;
 				for (int m = 0; m < NUM_MODELS; ++m) {
@@ -585,6 +463,7 @@ t2=clock();
 						oldAge = fAge;
 					}
 				}
+				//model1 age大于model0 age，model0必为错误的，将model1的模型给到model0，并使model1初始化
 				if (oldIdx != 0) {
 					m_Mean_Temp[0][bIdx_i + bIdx_j * modelWidth] = m_Mean_Temp[oldIdx][bIdx_i + bIdx_j * modelWidth];
 					m_Mean_Temp[oldIdx][bIdx_i + bIdx_j * modelWidth] = cur_mean;
@@ -595,123 +474,69 @@ t2=clock();
 					m_Age_Temp[0][bIdx_i + bIdx_j * modelWidth] = m_Age_Temp[oldIdx][bIdx_i + bIdx_j * modelWidth];
 					m_Age_Temp[oldIdx][bIdx_i + bIdx_j * modelWidth] = 0;
 				}
-				//////////////////////////////////////////////////////////////////////////
-				// Select Model 
-				// Check Match against 0
 
+                //结合上一步，oldIdx=0时，正常根据均值判断属于哪个模型
+				//oldIdx=1时，if中判断相当于判断当前点时候属于模型0(原模型1)，elseif必定会满足条件，相当于重新建立一个模型，else与elseif功能是相同的
 				if ((cur_mean - m_Mean_Temp[0][bIdx_i + bIdx_j * modelWidth])*(cur_mean - m_Mean_Temp[0][bIdx_i + bIdx_j * modelWidth]) < VAR_THRESH_MODEL_MATCH * m_Var_Temp[0][bIdx_i + bIdx_j * modelWidth]) {
 					m_ModelIdx[bIdx_i + bIdx_j * modelWidth] = 0;
-				}
-				// Check Match against 1
-				else if ((cur_mean - m_Mean_Temp[1][bIdx_i + bIdx_j * modelWidth])*(cur_mean - m_Mean_Temp[1][bIdx_i + bIdx_j * modelWidth])< VAR_THRESH_MODEL_MATCH * m_Var_Temp[1][bIdx_i + bIdx_j * modelWidth]) {
+				}else if ((cur_mean - m_Mean_Temp[1][bIdx_i + bIdx_j * modelWidth])*(cur_mean - m_Mean_Temp[1][bIdx_i + bIdx_j * modelWidth])< VAR_THRESH_MODEL_MATCH * m_Var_Temp[1][bIdx_i + bIdx_j * modelWidth]) {
 					m_ModelIdx[bIdx_i + bIdx_j * modelWidth] = 1;
-				}
-				// If No match, set 1 age to zero and match = 1
-				else {
+				}else {
 					m_ModelIdx[bIdx_i + bIdx_j * modelWidth] = 1;
 					m_Age_Temp[1][bIdx_i + bIdx_j * modelWidth] = 0;
 				}
-
-			}
-		}		// loop for models
-        // t2=clock();
-		// update with current observation
-		float obs_mean[NUM_MODELS];
-		float obs_var[NUM_MODELS];
-        // t3=clock();
-		for (int bIdx_j = 0; bIdx_j < curModelHeight; bIdx_j++) {
-			for (int bIdx_i = 0; bIdx_i < curModelWidth; bIdx_i++) {
-
-				// base (i,j) for this block
-				int idx_base_i;
-				int idx_base_j;
-				idx_base_i = ((float)bIdx_i) * BLOCK_SIZE;
-				idx_base_j = ((float)bIdx_j) * BLOCK_SIZE;
-
-				int nMatchIdx = m_ModelIdx[bIdx_i + bIdx_j * modelWidth];
-
-				// obtain observation mean
-				memset(obs_mean, 0, sizeof(float) * NUM_MODELS);
-				int nElemCnt[NUM_MODELS];
-				memset(nElemCnt, 0, sizeof(int) * NUM_MODELS);
-				for (int jj = 0; jj < BLOCK_SIZE; ++jj) {
-					for (int ii = 0; ii < BLOCK_SIZE; ++ii) {
-
-						int idx_i = idx_base_i + ii;
-						int idx_j = idx_base_j + jj;
-
-						if (idx_i < 0 || idx_i >= obsWidth || idx_j < 0 || idx_j >= obsHeight)
-							continue;
-
-						obs_mean[nMatchIdx] += pOutputImg.at<uchar>(idx_j, idx_i);
-						++nElemCnt[nMatchIdx];
-					}
-				}
-				for (int m = 0; m < NUM_MODELS; ++m) {
-
-					if (nElemCnt[m] <= 0) {
-						m_Mean[m][bIdx_i + bIdx_j * modelWidth] = m_Mean_Temp[m][bIdx_i + bIdx_j * modelWidth];
-					} else {
-						// learning rate for this block
-						float age = m_Age_Temp[m][bIdx_i + bIdx_j * modelWidth];
+					if (m_ModelIdx[bIdx_i + bIdx_j * modelWidth]==1) {
+						m_Mean[0][bIdx_i + bIdx_j * modelWidth] = m_Mean_Temp[0][bIdx_i + bIdx_j * modelWidth];
+						float age = m_Age_Temp[1][bIdx_i + bIdx_j * modelWidth];
 						float alpha = age / (age + 1.0);
-
-						obs_mean[m] /= ((float)nElemCnt[m]);
-						// update with this mean
 						if (age < 1) {
-							m_Mean[m][bIdx_i + bIdx_j * modelWidth] = obs_mean[m];
+							m_Mean[1][bIdx_i + bIdx_j * modelWidth] = cur_mean;
 						} else {
-							m_Mean[m][bIdx_i + bIdx_j * modelWidth] = alpha * m_Mean_Temp[m][bIdx_i + bIdx_j * modelWidth] + (1.0 - alpha) * obs_mean[m];
+							m_Mean[1][bIdx_i + bIdx_j * modelWidth] = alpha * m_Mean_Temp[1][bIdx_i + bIdx_j * modelWidth] + (1.0 - alpha) * cur_mean;
 						}
+					} else{
+						m_Mean[1][bIdx_i + bIdx_j * modelWidth] = m_Mean_Temp[1][bIdx_i + bIdx_j * modelWidth];
+						float age = m_Age_Temp[0][bIdx_i + bIdx_j * modelWidth];
+						float alpha = age / (age + 1.0);
+						if (age < 1) {
+							m_Mean[0][bIdx_i + bIdx_j * modelWidth] = cur_mean;
+						} else {
+							m_Mean[0][bIdx_i + bIdx_j * modelWidth] = alpha * m_Mean_Temp[0][bIdx_i + bIdx_j * modelWidth] + (1.0 - alpha) * cur_mean;
+						}
+					} 
 
-					}
-				}
+
 			}
 		}
-        // t4=clock();
-		
-		// t5=clock();
+
+		float obs_var[NUM_MODELS];
 		for (int bIdx_j = 0; bIdx_j < curModelHeight; bIdx_j++) {
 			for (int bIdx_i = 0; bIdx_i < curModelWidth; bIdx_i++) {
-				// TODO: OPTIMIZE THIS PART SO THAT WE DO NOT CALCULATE THIS (LUT)
-				// base (i,j) for this block
 				int idx_base_i;
 				int idx_base_j;
 				idx_base_i = bIdx_i * BLOCK_SIZE;
 				idx_base_j = bIdx_j * BLOCK_SIZE;
 				int nMatchIdx = m_ModelIdx[bIdx_i + bIdx_j * modelWidth];
-
-				// obtain observation variance
 				memset(obs_var, 0, sizeof(float) * NUM_MODELS);
 				int nElemCnt[NUM_MODELS];
 				memset(nElemCnt, 0, sizeof(int) * NUM_MODELS);
 				for (int jj = 0; jj < BLOCK_SIZE; ++jj) {
 					for (int ii = 0; ii < BLOCK_SIZE; ++ii) {
-
 						int idx_i = idx_base_i + ii;
 						int idx_j = idx_base_j + jj;
 						nElemCnt[nMatchIdx]++;
-
 						if (idx_i < 0 || idx_i >= obsWidth || idx_j < 0 || idx_j >= obsHeight) {
 							continue;
 						}
-
 						float pixelDist = 0.0;
 						float fDiff = pOutputImg.at<uchar>(idx_j, idx_i)- m_Mean[nMatchIdx][bIdx_i + bIdx_j * modelWidth];
-						// pixelDist += pow(fDiff, (int)2);
                         pixelDist += fDiff * fDiff;
-						// m_DistImg.at<float>(idx_j, idx_i) = pow(pOutputImg.at<uchar>(idx_j, idx_i) - m_Mean[0][bIdx_i + bIdx_j * modelWidth], (int)2);
 						float diff=pOutputImg.at<uchar>(idx_j, idx_i) - m_Mean[0][bIdx_i + bIdx_j * modelWidth];
                         m_DistImg.at<float>(idx_j, idx_i) = diff*diff;
-
 						if (m_Age_Temp[0][bIdx_i + bIdx_j * modelWidth] > 1) {
-
 							BYTE valOut = m_DistImg.at<float>(idx_j, idx_i) > VAR_THRESH_FG_DETERMINE * m_Var_Temp[0][bIdx_i + bIdx_j * modelWidth] ? 255 : 0;
 							mask.at<uchar>(idx_j, idx_i) = valOut;
-		
-
 						}
-
 						obs_var[nMatchIdx] = MAX(obs_var[nMatchIdx], pixelDist);
 					}
 				}

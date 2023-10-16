@@ -70,7 +70,7 @@ void KLTWrapper::InitFeatures()
 
 void KLTWrapper::RunTrack(const UMat& imgGray, const UMat& prevGray)
 {
-	clock_t star,end,t1,t2,t3,t4,t5,t6;
+	// clock_t star,end,t1,t2,t3,t4,t5,t6;
 
 	int nMatch[MAX_COUNT];
 	std::vector<cv::Point2f> good0;
@@ -78,16 +78,16 @@ void KLTWrapper::RunTrack(const UMat& imgGray, const UMat& prevGray)
 	std::vector<cv::Point2f> good1;
 	good1.clear();
 	if (count > 0) {
-		star=clock();
+		// star=clock();
 		UMat umatNextPts, umatStatus, umatErr;
 		cv::calcOpticalFlowPyrLK(prevGray, imgGray, prev_pts, umatNextPts, umatStatus, umatErr, Size(8,8),1
 		,cv::TermCriteria((TermCriteria::COUNT) | (TermCriteria::EPS), 20, (0.03)),0);
 		umatNextPts.reshape(2, 1).copyTo(next_pts);
         umatStatus.reshape(1, 1).copyTo(status);
         umatErr.reshape(1, 1).copyTo(err);
-        end=clock();
+        // end=clock();
 
-		t1=clock();
+		// t1=clock();
 		for (int i = 0; i < prev_pts.size(); i++) {
 			if (!status[i]||next_pts[i].x<0||next_pts[i].y<0||next_pts[i].x > width || next_pts[i].y>height) {
 				continue;
@@ -95,9 +95,9 @@ void KLTWrapper::RunTrack(const UMat& imgGray, const UMat& prevGray)
 			good0.push_back(prev_pts[i]);
             good1.push_back(next_pts[i]);
 		}
-		t2=clock();
+		// t2=clock();
 	}
-    t3=clock();
+    // t3=clock();
 	if (count >= 10) {
 
 		MakeHomoGraphy(good0, good1);
@@ -108,11 +108,11 @@ void KLTWrapper::RunTrack(const UMat& imgGray, const UMat& prevGray)
 		}
 		}
 	}
-	t4=clock();
+	// t4=clock();
 
-	t5=clock();
+	// t5=clock();
     InitFeatures();
-	t6=clock();
+// 	t6=clock();
 // double ti=end-star;	
 // double t=t2-t1;
 // double tt=t4-t3;
@@ -120,9 +120,14 @@ void KLTWrapper::RunTrack(const UMat& imgGray, const UMat& prevGray)
 // std::cout<<"calcop:"<<ti/CLOCKS_PER_SEC<<" "<<"sec_point:"<<t/CLOCKS_PER_SEC<<" "<<"MakeHomoGraphy:"<<tt/CLOCKS_PER_SEC<<" "<<"InitFeatures:"<<ttt/CLOCKS_PER_SEC<<std::endl;
 }
 
-void KLTWrapper::GetHomography(double (*h)[9])
+void KLTWrapper::GetHomography(double *h)
 {
-	memcpy(h, matH, sizeof(matH));
+	// memcpy(h, matH, sizeof(matH));
+	for (int i = 0; i < 16; i++) {
+    for (int j = 0; j < 9; j++) {
+        h[i * 9 + j] = matH[i][j];
+    }
+}
 }
 
 void KLTWrapper::MakeHomoGraphy(std::vector<cv::Point2f>&good0,std::vector<cv::Point2f> &good1)

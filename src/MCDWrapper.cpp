@@ -12,6 +12,7 @@ MCDWrapper::MCDWrapper()
 
 MCDWrapper::~MCDWrapper()
 {
+    delete h;
 }
 
 void
@@ -24,8 +25,9 @@ void
 	m_LucasKanade.Init(imgGray.cols,imgGray.rows);
 	BGModel.init(mat_imgGray);
 	imgGrayPrev=imgGray.clone();
+	h=new double[16 * 9];
 }
-cv::Point2f MCDWrapper::compensate(cv::Point2f point,double(*h)[9])
+cv::Point2f MCDWrapper::compensate(cv::Point2f point,double*h)
 {
 		       float newW = 0;
 		       float newX = 0;
@@ -34,142 +36,150 @@ cv::Point2f MCDWrapper::compensate(cv::Point2f point,double(*h)[9])
 			   int modelHeight=imgGrayPrev.rows;
 			   int X=point.x;
 			   int Y=point.y;
-				// transformed coordinates with h
-		       if(X<modelWidth/4&&Y<modelHeight/4)
-				{
-		        newW = h[0][6] * X + h[0][7] * Y + h[0][8];
-				newX = (h[0][0] * X + h[0][1] * Y + h[0][2]) / newW;
-				newY = (h[0][3] * X + h[0][4] * Y + h[0][5]) / newW;
-				}
-				else if(X<modelWidth/2&&X>=modelWidth/4&&Y<modelHeight/4)
-				{
-				newW = h[1][6] * X + h[1][7] * Y + h[1][8];
-				newX = (h[1][0] * X + h[1][1] * Y + h[1][2]) / newW;
-				newY = (h[1][3] * X + h[1][4] * Y + h[1][5]) / newW;
-				}
-				else if(X<modelWidth/4*3&&X>=modelWidth/2&&Y<modelHeight/4)
-				{
-				newW = h[2][6] * X + h[2][7] * Y + h[2][8];
-				newX = (h[2][0] * X + h[2][1] * Y + h[2][2]) / newW;
-				newY = (h[2][3] * X + h[2][4] * Y + h[2][5]) / newW;
-				}
-				else if(X<modelWidth&&X>=modelWidth/4*3&&Y<modelHeight/4)
-				{
-				newW = h[3][6] * X + h[3][7] * Y + h[3][8];
-				newX = (h[3][0] * X + h[3][1] * Y + h[3][2]) / newW;
-				newY = (h[3][3] * X + h[3][4] * Y + h[3][5]) / newW;
-				}
 
-				else if(X<modelWidth/4&&Y<modelHeight/2&&Y>=modelHeight/4)
-				{
-				newW = h[4][6] * X + h[4][7] * Y + h[4][8];
-				newX = (h[4][0] * X + h[4][1] * Y + h[4][2]) / newW;
-				newY = (h[4][3] * X + h[4][4] * Y + h[4][5]) / newW;
-				}
-				else if(X<modelWidth/2&&X>=modelWidth/4&&Y<modelHeight/2&&Y>=modelHeight/4)
-				{
-				newW = h[5][6] * X + h[5][7] * Y + h[5][8];
-				newX = (h[5][0] * X + h[5][1] * Y + h[5][2]) / newW;
-				newY = (h[5][3] * X + h[5][4] * Y + h[5][5]) / newW;
-				}
-				else if(X<modelWidth/4*3&&X>=modelWidth/2&&Y<modelHeight/2&&Y>=modelHeight/4)
-				{
-				newW = h[6][6] * X + h[6][7] * Y + h[6][8];
-				newX = (h[6][0] * X + h[6][1] * Y + h[6][2]) / newW;
-				newY = (h[6][3] * X + h[6][4] * Y + h[6][5]) / newW;
-				}
-				else if(X<modelWidth&&X>=modelWidth/4*3&&Y<modelHeight/2&&Y>=modelHeight/4)
-				{
-				newW = h[7][6] * X + h[7][7] * Y + h[7][8];
-				newX = (h[7][0] * X + h[7][1] * Y + h[7][2]) / newW;
-				newY = (h[7][3] * X + h[7][4] * Y + h[7][5]) / newW;
-				}
-				else if(X<modelWidth/4&&Y<modelHeight/4*3&&Y>=modelHeight/2)
-				{
-				newW = h[8][6] * X + h[8][7] * Y + h[8][8];
-				newX = (h[8][0] * X + h[8][1] * Y + h[8][2]) / newW;
-				newY = (h[8][3] * X + h[8][4] * Y + h[8][5]) / newW;
-				}
-				else if(X<modelWidth/2&&X>=modelWidth/4&&Y<modelHeight/4*3&&Y>=modelHeight/2)
-				{
-				newW = h[9][6] * X + h[9][7] * Y + h[9][8];
-				newX = (h[9][0] * X + h[9][1] * Y + h[9][2]) / newW;
-				newY = (h[9][3] * X + h[9][4] * Y + h[9][5]) / newW;
-				}
-				else if(X<modelWidth/4*3&&X>=modelWidth/2&&Y<modelHeight/4*3&&Y>=modelHeight/2)
-				{
-				newW = h[10][6] * X + h[10][7] * Y + h[10][8];
-				newX = (h[10][0] * X + h[10][1] * Y + h[10][2]) / newW;
-				newY = (h[10][3] * X + h[10][4] * Y + h[10][5]) / newW;
-				}
-				else if(X<modelWidth&&X>=modelWidth/4*3&&Y<modelHeight/4*3&&Y>=modelHeight/2)
-				{
-				newW = h[11][6] * X + h[11][7] * Y + h[11][8];
-				newX = (h[11][0] * X + h[11][1] * Y + h[11][2]) / newW;
-				newY = (h[11][3] * X + h[11][4] * Y + h[11][5]) / newW;
-				}
-				else if(X<modelWidth/4&&Y<modelHeight&&Y>=modelHeight/4*3)
-				{
-				newW = h[12][6] * X + h[12][7] * Y + h[12][8];
-				newX = (h[12][0] * X + h[12][1] * Y + h[12][2]) / newW;
-				newY = (h[12][3] * X + h[12][4] * Y + h[12][5]) / newW;
-				}
-				else if(X<modelWidth/2&&X>=modelWidth/4&&Y<modelHeight&&Y>=modelHeight/4*3)
-				{
-				newW = h[13][6] * X + h[13][7] * Y + h[13][8];
-				newX = (h[13][0] * X + h[13][1] * Y + h[13][2]) / newW;
-				newY = (h[13][3] * X + h[13][4] * Y + h[13][5]) / newW;
-				}
-				else if(X<modelWidth/4*3&&X>=modelWidth/2&&Y<modelHeight&&Y>=modelHeight/4*3)
-				{
-				newW = h[14][6] * X + h[14][7] * Y + h[14][8];
-				newX = (h[14][0] * X + h[14][1] * Y + h[14][2]) / newW;
-				newY = (h[14][3] * X + h[14][4] * Y + h[14][5]) / newW;
-				}
-				else if(X<modelWidth&&X>=modelWidth/4*3&&Y<modelHeight&&Y>=modelHeight/4*3)
-				{
-				newW = h[15][6] * X + h[15][7] * Y + h[15][8];
-				newX = (h[15][0] * X + h[15][1] * Y + h[15][2]) / newW;
-				newY = (h[15][3] * X + h[15][4] * Y + h[15][5]) / newW;
-				}
+			    int h_idxi=X/480;
+                int h_idxj=Y/270;
+                int h_id= h_idxi+h_idxj*4;
+
+			   	newW = h[h_id*9+6] * X + h[h_id*9+7] * Y + h[h_id*9+8];
+				newX = (h[h_id*9+0] * X + h[h_id*9+1] * Y + h[h_id*9+2]) / newW;
+				newY = (h[h_id*9+3] * X + h[h_id*9+4] * Y + h[h_id*9+5]) / newW;
+				// transformed coordinates with h
+		    //    if(X<modelWidth/4&&Y<modelHeight/4)
+			// 	{
+		    //     newW = h[0][6] * X + h[0][7] * Y + h[0][8];
+			// 	newX = (h[0][0] * X + h[0][1] * Y + h[0][2]) / newW;
+			// 	newY = (h[0][3] * X + h[0][4] * Y + h[0][5]) / newW;
+			// 	}
+			// 	else if(X<modelWidth/2&&X>=modelWidth/4&&Y<modelHeight/4)
+			// 	{
+			// 	newW = h[1][6] * X + h[1][7] * Y + h[1][8];
+			// 	newX = (h[1][0] * X + h[1][1] * Y + h[1][2]) / newW;
+			// 	newY = (h[1][3] * X + h[1][4] * Y + h[1][5]) / newW;
+			// 	}
+			// 	else if(X<modelWidth/4*3&&X>=modelWidth/2&&Y<modelHeight/4)
+			// 	{
+			// 	newW = h[2][6] * X + h[2][7] * Y + h[2][8];
+			// 	newX = (h[2][0] * X + h[2][1] * Y + h[2][2]) / newW;
+			// 	newY = (h[2][3] * X + h[2][4] * Y + h[2][5]) / newW;
+			// 	}
+			// 	else if(X<modelWidth&&X>=modelWidth/4*3&&Y<modelHeight/4)
+			// 	{
+			// 	newW = h[3][6] * X + h[3][7] * Y + h[3][8];
+			// 	newX = (h[3][0] * X + h[3][1] * Y + h[3][2]) / newW;
+			// 	newY = (h[3][3] * X + h[3][4] * Y + h[3][5]) / newW;
+			// 	}
+			// 	else if(X<modelWidth/4&&Y<modelHeight/2&&Y>=modelHeight/4)
+			// 	{
+			// 	newW = h[4][6] * X + h[4][7] * Y + h[4][8];
+			// 	newX = (h[4][0] * X + h[4][1] * Y + h[4][2]) / newW;
+			// 	newY = (h[4][3] * X + h[4][4] * Y + h[4][5]) / newW;
+			// 	}
+			// 	else if(X<modelWidth/2&&X>=modelWidth/4&&Y<modelHeight/2&&Y>=modelHeight/4)
+			// 	{
+			// 	newW = h[5][6] * X + h[5][7] * Y + h[5][8];
+			// 	newX = (h[5][0] * X + h[5][1] * Y + h[5][2]) / newW;
+			// 	newY = (h[5][3] * X + h[5][4] * Y + h[5][5]) / newW;
+			// 	}
+			// 	else if(X<modelWidth/4*3&&X>=modelWidth/2&&Y<modelHeight/2&&Y>=modelHeight/4)
+			// 	{
+			// 	newW = h[6][6] * X + h[6][7] * Y + h[6][8];
+			// 	newX = (h[6][0] * X + h[6][1] * Y + h[6][2]) / newW;
+			// 	newY = (h[6][3] * X + h[6][4] * Y + h[6][5]) / newW;
+			// 	}
+			// 	else if(X<modelWidth&&X>=modelWidth/4*3&&Y<modelHeight/2&&Y>=modelHeight/4)
+			// 	{
+			// 	newW = h[7][6] * X + h[7][7] * Y + h[7][8];
+			// 	newX = (h[7][0] * X + h[7][1] * Y + h[7][2]) / newW;
+			// 	newY = (h[7][3] * X + h[7][4] * Y + h[7][5]) / newW;
+			// 	}
+			// 	else if(X<modelWidth/4&&Y<modelHeight/4*3&&Y>=modelHeight/2)
+			// 	{
+			// 	newW = h[8][6] * X + h[8][7] * Y + h[8][8];
+			// 	newX = (h[8][0] * X + h[8][1] * Y + h[8][2]) / newW;
+			// 	newY = (h[8][3] * X + h[8][4] * Y + h[8][5]) / newW;
+			// 	}
+			// 	else if(X<modelWidth/2&&X>=modelWidth/4&&Y<modelHeight/4*3&&Y>=modelHeight/2)
+			// 	{
+			// 	newW = h[9][6] * X + h[9][7] * Y + h[9][8];
+			// 	newX = (h[9][0] * X + h[9][1] * Y + h[9][2]) / newW;
+			// 	newY = (h[9][3] * X + h[9][4] * Y + h[9][5]) / newW;
+			// 	}
+			// 	else if(X<modelWidth/4*3&&X>=modelWidth/2&&Y<modelHeight/4*3&&Y>=modelHeight/2)
+			// 	{
+			// 	newW = h[10][6] * X + h[10][7] * Y + h[10][8];
+			// 	newX = (h[10][0] * X + h[10][1] * Y + h[10][2]) / newW;
+			// 	newY = (h[10][3] * X + h[10][4] * Y + h[10][5]) / newW;
+			// 	}
+			// 	else if(X<modelWidth&&X>=modelWidth/4*3&&Y<modelHeight/4*3&&Y>=modelHeight/2)
+			// 	{
+			// 	newW = h[11][6] * X + h[11][7] * Y + h[11][8];
+			// 	newX = (h[11][0] * X + h[11][1] * Y + h[11][2]) / newW;
+			// 	newY = (h[11][3] * X + h[11][4] * Y + h[11][5]) / newW;
+			// 	}
+			// 	else if(X<modelWidth/4&&Y<modelHeight&&Y>=modelHeight/4*3)
+			// 	{
+			// 	newW = h[12][6] * X + h[12][7] * Y + h[12][8];
+			// 	newX = (h[12][0] * X + h[12][1] * Y + h[12][2]) / newW;
+			// 	newY = (h[12][3] * X + h[12][4] * Y + h[12][5]) / newW;
+			// 	}
+			// 	else if(X<modelWidth/2&&X>=modelWidth/4&&Y<modelHeight&&Y>=modelHeight/4*3)
+			// 	{
+			// 	newW = h[13][6] * X + h[13][7] * Y + h[13][8];
+			// 	newX = (h[13][0] * X + h[13][1] * Y + h[13][2]) / newW;
+			// 	newY = (h[13][3] * X + h[13][4] * Y + h[13][5]) / newW;
+			// 	}
+			// 	else if(X<modelWidth/4*3&&X>=modelWidth/2&&Y<modelHeight&&Y>=modelHeight/4*3)
+			// 	{
+			// 	newW = h[14][6] * X + h[14][7] * Y + h[14][8];
+			// 	newX = (h[14][0] * X + h[14][1] * Y + h[14][2]) / newW;
+			// 	newY = (h[14][3] * X + h[14][4] * Y + h[14][5]) / newW;
+			// 	}
+			// 	else if(X<modelWidth&&X>=modelWidth/4*3&&Y<modelHeight&&Y>=modelHeight/4*3)
+			// 	{
+			// 	newW = h[15][6] * X + h[15][7] * Y + h[15][8];
+			// 	newX = (h[15][0] * X + h[15][1] * Y + h[15][2]) / newW;
+			// 	newY = (h[15][3] * X + h[15][4] * Y + h[15][5]) / newW;
+			// 	}
 				return cv::Point2f(newX,newY);
 }
 
 std::vector<cv::Rect> MCDWrapper::Run(const UMat & imgGray)
-{   clock_t startTime1,endTime1;
+{   
+	// clock_t startTime1,endTime1;
 	clock_t startTime2,endTime2;
-	clock_t startTime3,endTime3;
-	clock_t startTime4,endTime4;
-	clock_t startTime5,endTime5;
-	clock_t startRunTrack,endRunTrack;
-	clock_t startGetHomography,endGetHomography;
-	clock_t startGetmotionCompensate,endmotionCompensate;
-
+	// clock_t startTime3,endTime3;
+	// clock_t startTime4,endTime4;
+	// clock_t startTime5,endTime5;
+	// clock_t startRunTrack,endRunTrack;
+	// clock_t startGetHomography,endGetHomography;
+	// clock_t startGetmotionCompensate,endmotionCompensate;
+	// clock_t thstart,thend,find1,find2,draw1,draw2;
 
 	/*************************
 	计算KLT 单应矩阵H 模型补偿
     **************************/
-	startTime1 = clock();
+	// startTime1 = clock();
 	frm_cnt++;
-	double h[16][9];
-	startRunTrack=clock();
+
+	// startRunTrack=clock();
 	m_LucasKanade.RunTrack(imgGray, imgGrayPrev);
-	endRunTrack=clock();
+	// endRunTrack=clock();
 
 	m_LucasKanade.GetHomography(h);
 
-    startGetmotionCompensate=clock();
+    // startGetmotionCompensate=clock();
 	BGModel.motionCompensate(h);
-    endmotionCompensate=clock();
+    // endmotionCompensate=clock();
 
-	double time1 =endRunTrack-startRunTrack;
-	double time3 =endmotionCompensate-startGetmotionCompensate;
+	// double time1 =endRunTrack-startRunTrack;
+	// double time3 =endmotionCompensate-startGetmotionCompensate;
 
-    std::cout<<"RunTrack:"<<time1/CLOCKS_PER_SEC<<" "<<"motionCompensate:"<<time3/CLOCKS_PER_SEC<<std::endl;
+    // std::cout<<"RunTrack:"<<time1/CLOCKS_PER_SEC<<" "<<"motionCompensate:"<<time3/CLOCKS_PER_SEC<<std::endl;
 
 	Mat H(3, 3, CV_32F);
     memcpy(H.data,h, sizeof(float) * 9);
-	endTime1 = clock();
+	// endTime1 = clock();
 
     /*************************
 	模型更新 前景提取
@@ -183,24 +193,28 @@ std::vector<cv::Rect> MCDWrapper::Run(const UMat & imgGray)
     /*************************
 	形态学处理并绘制初始框 
     **************************/
-	startTime3 = clock();
+	// startTime3 = clock();
+	// thstart= clock();
 	vector<vector<Point>> contours;
     vector<Vec4i> hierarchy;
 	vector<Rect> bgs_tracked_res;
 	vector<Rect>bgs_tracked_list_point;
     vector<Rect>new_bgs_tracked_res;
-
 	UMat thresh;
 	thresh=UMat::zeros(imgGray.rows, imgGray.cols, CV_8UC1);
 	Mat kernel = getStructuringElement(MORPH_RECT, Size(5, 5));
-	medianBlur(BGModel.mask, BGModel.mask, 3);
+	// medianBlur(BGModel.mask, BGModel.mask, 3);
 	// blur(BGModel.mask, BGModel.mask, Size(3, 3));
     dilate(BGModel.mask, thresh, kernel, Point(-1, -1), 1);
     erode(thresh, thresh, kernel, Point(-1, -1), 1);
+	// thend= clock();
+	// find1= clock();
 	// medianBlur(thresh, thresh, 3);
     background_res.clear();
 	// startTime3 = clock();
     findContours(thresh.clone(), contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+	// find2= clock();
+	// draw1= clock();
 
     for (size_t i = 0; i < contours.size(); i++) {
         if (contourArea(contours[i]) < 40)
@@ -208,12 +222,17 @@ std::vector<cv::Rect> MCDWrapper::Run(const UMat & imgGray)
         Rect rect = boundingRect(contours[i]);
 		background_res.push_back(rect);
     }
+	// draw2= clock();
+   	// endTime3 = clock(); 
+	// double t=thend-thstart;
+	// double tt=find2-find1;
+	// double ttt=draw2-draw1;
+    // std::cout<<"TH:"<<t/CLOCKS_PER_SEC<<" "<<"FIND:"<<tt/CLOCKS_PER_SEC<<" "<<"draw:"<<ttt/CLOCKS_PER_SEC<<" "<<std::endl;
 
-   	endTime3 = clock(); 
     /************************************
 	tracker追踪 通过运动连续性对运动目标框进行筛选
     *************************************/
-	startTime4 = clock();
+	// startTime4 = clock();
 	//更新所有trackerbox状态
 	for (size_t i = 0; i < bgs_tracked_list.size(); i++) {
         bgs_tracked_list[i].update_status=false;
@@ -286,12 +305,12 @@ std::vector<cv::Rect> MCDWrapper::Run(const UMat & imgGray)
             unique_bgs_tracked_res.push_back(bgs_tracked_res[i]);
         }
     }
-	endTime4 = clock();
+	// endTime4 = clock();
 
     /************************************
 	计算均方误差追踪 通过相似性对运动目标框进行筛选
     *************************************/
-	startTime5 = clock();
+	// startTime5 = clock();
 	new_bgs_tracked_res.clear();
 	for (size_t i = 0; i < unique_bgs_tracked_res.size(); i++) {	
 			Rect box = unique_bgs_tracked_res[i];
@@ -345,17 +364,19 @@ std::vector<cv::Rect> MCDWrapper::Run(const UMat & imgGray)
                 }
             }
 	}
-	endTime5 = clock();
+
 
     // imgGray.copyTo(imgGrayPrev);
 	imgGrayPrev=imgGray.clone();
-	double t1 =endTime1-startTime1;
+	// endTime5 = clock();
+	// double t1 =endTime1-startTime1;
 	double t2 =endTime2-startTime2;
-	double t3 =endTime3-startTime3;
-	double t4 =endTime4-startTime4;
-	double t5 =endTime5-startTime5;
-    std::cout<<"KLT:"<<t1/CLOCKS_PER_SEC<<" "<<"BGM:"<<t2/CLOCKS_PER_SEC<<" "<<"TH:"<<t3/CLOCKS_PER_SEC<<" "<<"TRACKER:"<<t4/CLOCKS_PER_SEC<<" "<<"MSE:"<<t5/CLOCKS_PER_SEC<<std::endl;
+	// double t3 =endTime3-startTime3;
+	// double t4 =endTime4-startTime4;
+	// double t5 =endTime5-startTime5;
+    // std::cout<<"KLT:"<<t1/CLOCKS_PER_SEC<<" "<<"BGM:"<<t2/CLOCKS_PER_SEC<<" "<<"TH:"<<t3/CLOCKS_PER_SEC<<" "<<"TRACKER:"<<t4/CLOCKS_PER_SEC<<" "<<"MSE:"<<t5/CLOCKS_PER_SEC<<std::endl;
 	// std::cout<<"TOTAL:"<<t1/CLOCKS_PER_SEC+t2/CLOCKS_PER_SEC+t3/CLOCKS_PER_SEC+t4/CLOCKS_PER_SEC+t5/CLOCKS_PER_SEC<<std::endl;
+
 	return  new_bgs_tracked_res;
 
 }

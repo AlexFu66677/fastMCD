@@ -36,12 +36,11 @@ class MCDWrapper {
 
 	KLTWrapper m_LucasKanade;
 	UMat imgGrayPrev;
-
-
 	ProbModel BGModel;
 	vector<Tracker> bgs_tracked_list;
 	vector<Rect> background_res;
 	std::vector<cv::Rect> unique_bgs_tracked_res;
+	double *h;
 /************************************************************************/
 /*  Methods								                                */
 /************************************************************************/
@@ -51,7 +50,7 @@ class MCDWrapper {
 	~MCDWrapper();
 
 	void Init(const UMat & imgGary);
-	cv::Point2f compensate(cv::Point2f,double(*h)[9]);
+	cv::Point2f compensate(cv::Point2f,double*h);
 	std::vector<cv::Rect> Run(const UMat & imgGary);
 
 };
