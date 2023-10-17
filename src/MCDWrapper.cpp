@@ -167,9 +167,10 @@ std::vector<cv::Rect> MCDWrapper::Run(const UMat & imgGray)
 	// endRunTrack=clock();
 
 	m_LucasKanade.GetHomography(h);
-
+	Mat Temp;
+	imgGray.copyTo(Temp);
     // startGetmotionCompensate=clock();
-	BGModel.motionCompensate(h);
+	BGModel.motionCompensate(h,Temp);
     // endmotionCompensate=clock();
 
 	// double time1 =endRunTrack-startRunTrack;
@@ -185,9 +186,9 @@ std::vector<cv::Rect> MCDWrapper::Run(const UMat & imgGray)
 	模型更新 前景提取
     **************************/
 	startTime2 = clock();
-	Mat Temp;
-	imgGray.copyTo(Temp);
-	BGModel.update(Temp);
+	Mat Temp1;
+	imgGray.copyTo(Temp1);
+	BGModel.update(Temp1);
 	endTime2 = clock();
 
     /*************************
