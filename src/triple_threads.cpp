@@ -25,8 +25,12 @@ using namespace cv;
 
 std::mutex mtx;
 std::queue<array<double, 144>> frameQueue;
+std::queue<array<double, 144>> H_tmp;
 std::queue<UMat> cur_frames;
 std::queue<UMat> show_frames;
+std::queue<UMat> cur_tmpframes;
+std::queue<Mat> show_maskframes;
+
 bool isFinished = false;
 ProbModel BGModel;
 void readFrame() {
@@ -71,6 +75,36 @@ void readFrame() {
   std::lock_guard<std::mutex> lock(mtx);
   isFinished = true;
 }
+void modekinfer() {
+  double *h = new double[16 * 9];
+  UMat imggray;
+  int num = 1;
+  while (true) {
+    {
+      std::lock_guard<std::mutex> lock(mtx);
+      if (frameQueue.empty()) {
+        if (isFinished) {
+          break;
+        } else {
+          continue;
+        }
+      }
+      for (int i = 0; i < 16 * 9; i++) {
+        h[i] = frameQueue.front()[i];
+      }
+      imggray = cur_frames.front();
+      H_tmp.push(frameQueue.front());
+      frameQueue.pop();
+      cur_frames.pop();
+      Mat Temp;
+      imggray.copyTo(Temp);
+      BGModel.motionCompensate(h, Temp);
+      show_maskframes.push(BGModel.mask);
+      cur_tmpframes.push(imggray);
+    }
+  }
+  delete h;
+}
 cv::Point2f compensate(cv::Point2f point, double *h) {
   float newW = 0;
   float newX = 0;
@@ -92,21 +126,23 @@ int main() {
   struct timespec start, finish;
   clock_gettime(CLOCK_MONOTONIC, &start);
   std::thread t1(readFrame);
+  std::thread t2(modekinfer);
   t1.detach();
-  Json::Value data;
-  vector<Rect> background_res;
-  vector<Tracker> bgs_tracked_list;
-  std::vector<cv::Rect> unique_bgs_tracked_res;
-  double *h = new double[16 * 9];
+  t2.detach();
   UMat imggray;
   UMat cur_frame;
+  Mat mask_res;
   UMat imggrayPrev;
+  Json::Value data;
 
-  int num = 1;
+  vector<Tracker> bgs_tracked_list;
+  std::vector<cv::Rect> unique_bgs_tracked_res;
+  vector<Rect> background_res;
+  double *h = new double[16 * 9];
   while (true) {
     {
       std::lock_guard<std::mutex> lock(mtx);
-      if (frameQueue.empty()) {
+      if (show_maskframes.empty()) {
         if (isFinished) {
           break;
         } else {
@@ -114,19 +150,18 @@ int main() {
         }
       }
       for (int i = 0; i < 16 * 9; i++) {
-        h[i] = frameQueue.front()[i];
+        h[i] = H_tmp.front()[i];
       }
-      imggray = cur_frames.front();
-      frameQueue.pop();
-      cur_frames.pop();
+      imggray = cur_tmpframes.front();
+      mask_res = show_maskframes.front();
+      cur_tmpframes.pop();
+      show_maskframes.pop();
+      H_tmp.pop();
     }
+
     if (imggrayPrev.empty()) {
       imggrayPrev = imggray.clone();
     }
-
-    Mat Temp;
-    imggray.copyTo(Temp);
-    BGModel.motionCompensate(h, Temp);
 
     vector<Vec4i> hierarchy;
     vector<Rect> bgs_tracked_res;
@@ -137,7 +172,7 @@ int main() {
     UMat thresh;
     thresh = UMat::zeros(imggray.rows, imggray.cols, CV_8UC1);
     Mat kernel = getStructuringElement(MORPH_RECT, Size(5, 5));
-    dilate(BGModel.mask, thresh, kernel, Point(-1, -1), 1);
+    dilate(mask_res, thresh, kernel, Point(-1, -1), 1);
     erode(thresh, thresh, kernel, Point(-1, -1), 1);
     background_res.clear();
     findContours(thresh.clone(), contours, hierarchy, RETR_EXTERNAL,
