@@ -65,9 +65,9 @@ public:
       }
     }
     // Cleanup(context, commandQueue, program, kernel, memObjects);
-    //0,7,8在motionCompensate位置进行clReleaseMemObject
+    // 0,7,8在motionCompensate位置进行clReleaseMemObject
     for (int i = 1; i < 7; i++) {
-    if (memObjects[i] != 0)
+      if (memObjects[i] != 0)
         clReleaseMemObject(memObjects[i]);
     }
     if (commandQueue != 0)
@@ -115,10 +115,9 @@ public:
     commandQueue = CreateCommandQueue(context, &device);
 
     // 三、创建和构建程序对象
-    program = CreateProgram(context, device, "compensate.cl");
+    program = CreateProgram(context, device, "model.cl");
     // 四、 创建OpenCL内核并分配内存空间
-    kernel = clCreateKernel(program, "compensate_kernel", NULL);
-    h_kernel = clCreateKernel(program, "h_cal_kernel", NULL);
+    kernel = clCreateKernel(program, "model_kernel", NULL);
     motionCompensate_init(h, pInputImg);
     delete h;
   }

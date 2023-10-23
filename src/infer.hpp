@@ -1,8 +1,8 @@
 
-#ifndef _MCDWRAPPER_H_
-#define _MCDWRAPPER_H_
+#ifndef _INFER_H_
+#define _INFER_H_
 #include "KLTWrapper.hpp"
-#include "prob_model.hpp"
+#include "model.hpp"
 #include "tracker.hpp"
 #include <algorithm>
 #include <cstdlib>
@@ -17,11 +17,11 @@
 using namespace std;
 using namespace cv;
 
-class MCDWrapper {
+class Infer {
 public:
   int frm_cnt;
 
-  KLTWrapper m_LucasKanade;
+  KLTWrapper KLT;
   UMat imgGrayPrev;
   ProbModel BGModel;
   vector<Tracker> bgs_tracked_list;
@@ -30,12 +30,12 @@ public:
   double *h;
 
 public:
-  MCDWrapper();
-  ~MCDWrapper();
+  Infer();
+  ~Infer();
 
   void Init(const UMat &imgGary);
   cv::Point2f compensate(cv::Point2f, double *h);
   std::vector<cv::Rect> Run(const UMat &imgGary);
 };
 
-#endif //_MCDWRAPPER_H_
+#endif //_INFER_H_

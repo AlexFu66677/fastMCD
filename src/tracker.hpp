@@ -1,5 +1,5 @@
 #include "KLTWrapper.hpp"
-#include "prob_model.hpp"
+#include "model.hpp"
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>

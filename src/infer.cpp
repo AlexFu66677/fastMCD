@@ -1,26 +1,26 @@
 #ifndef _MCDWRAPPER_CPP_
 #define _MCDWRAPPER_CPP_
 
-#include "MCDWrapper.hpp"
+#include "infer.hpp"
 #include "params.hpp"
 #include <cstring>
 #include <ctime>
 
-MCDWrapper::MCDWrapper() {}
+Infer::Infer() {}
 
-MCDWrapper::~MCDWrapper() { delete h; }
+Infer::~Infer() { delete h; }
 
-void MCDWrapper::Init(const UMat &imgGray) {
+void Infer::Init(const UMat &imgGray) {
 
   frm_cnt = 0;
   Mat mat_imgGray;
   imgGray.copyTo(mat_imgGray);
-  m_LucasKanade.Init(imgGray.cols, imgGray.rows);
+  KLT.Init(imgGray.cols, imgGray.rows);
   BGModel.init(mat_imgGray);
   imgGrayPrev = imgGray.clone();
   h = new double[16 * 9];
 }
-cv::Point2f MCDWrapper::compensate(cv::Point2f point, double *h) {
+cv::Point2f Infer::compensate(cv::Point2f point, double *h) {
   float newW = 0;
   float newX = 0;
   float newY = 0;
@@ -39,12 +39,12 @@ cv::Point2f MCDWrapper::compensate(cv::Point2f point, double *h) {
   return cv::Point2f(newX, newY);
 }
 
-std::vector<cv::Rect> MCDWrapper::Run(const UMat &imgGray) {
+std::vector<cv::Rect> Infer::Run(const UMat &imgGray) {
   /*************************
     计算KLT 单应矩阵H 模型补偿
   **************************/
-  m_LucasKanade.RunTrack(imgGray, imgGrayPrev);
-  m_LucasKanade.GetHomography(h);
+  KLT.RunTrack(imgGray, imgGrayPrev);
+  KLT.GetHomography(h);
   Mat Temp;
   imgGray.copyTo(Temp);
   BGModel.motionCompensate(h, Temp);

@@ -101,7 +101,9 @@ void KLTWrapper::RunTrack(const UMat &imgGray, const UMat &prevGray) {
       }
     }
   }
-  InitFeatures();
+  if (prev_pts.empty()) {
+    InitFeatures();
+  }
 }
 
 void KLTWrapper::GetHomography(double *h) {

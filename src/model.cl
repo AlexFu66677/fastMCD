@@ -5,7 +5,7 @@ void vector_add(global const float *a,global const float *b,global const float *
     result[gid] = c[gid];
 }
 
-__kernel void compensate_kernel(
+__kernel void model_kernel(
 	__global double *h,
     __global float *m_Mean,
     __global float *m_Var,
